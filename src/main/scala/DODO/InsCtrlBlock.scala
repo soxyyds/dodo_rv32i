@@ -113,6 +113,8 @@ class ISA extends Bundle{
   val LH = Bool()
   val LHU = Bool()
   val LW = Bool()
+  // csrrw
+  val CSRRW = Bool()
 
   def Aclass(): Bool = {
     val Arithmetic = ADD || ADDI || SUB || LUI || AUIPC
