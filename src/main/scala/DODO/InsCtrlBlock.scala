@@ -26,7 +26,7 @@ class InstCtrlBlock extends Bundle{
   val src2 = UInt(32.W)
   val imm = new IMM
   val wbdata = UInt(32.W)
-  //bondle
+  //bundle
   val jump = new JumpIssue
   val branch = new BranchIssue
   val load = new LoadIssue
