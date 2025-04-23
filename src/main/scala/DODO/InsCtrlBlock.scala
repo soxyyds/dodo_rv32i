@@ -7,7 +7,7 @@ class InstCtrlBlock extends Bundle{
   //base
   val Valid = Bool()
   val inst = UInt(32.W)
-  val pc = UInt(32.W)
+  val pc = UInt(64.W)
   val isa = new ISA
   //reorder
   val finish = Bool()
@@ -24,49 +24,42 @@ class InstCtrlBlock extends Bundle{
   //exe
   val src1 = UInt(32.W)
   val src2 = UInt(32.W)
-  val imm = new IMM
+  val imm = Unit(32.W)
   val wbdata = UInt(32.W)
   //bundle
   val jump = new JumpIssue
   val branch = new BranchIssue
   val load = new LoadIssue
   val store = new StoreIssue
+  //
 }
 class JumpIssue extends Bundle{
   val Valid = Bool()
-  val proTarget = UInt(32.W)
-  val actTarget = UInt(32.W)
-  val link = UInt(32.W)
+  val proTarget = UInt(64.W)
+  val actTarget = UInt(64.W)
+  val link = UInt(64.W)
 }
 class BranchIssue extends Bundle{
   val Valid = Bool()
   val proTaken = Bool()
   val actTaken = Bool()
-  val target = UInt(32.W)
+  val target = UInt(64.W)
 }
 class LoadIssue extends Bundle{
   val Valid = Bool()
-  val addr = UInt(32.W)
+  val addr = UInt(64.W)
   val data = UInt(32.W)
   val Ready = Bool()
 }
 class StoreIssue extends Bundle{
   val Valid = Bool()
-  val addr = UInt(32.W)
+  val addr = UInt(64.W)
   val mask = UInt(32.W)
   val data = UInt(32.W)
   val Ready = Bool()
 }
 
 
-class IMM extends Bundle {
-  val I = UInt(32.W)
-  val B = UInt(32.W)
-  val S = UInt(32.W)
-  val U = UInt(32.W)
-  val J = UInt(32.W)
-  val Z = UInt(32.W)
-}
 class ISA extends Bundle{
   // Arithmetic
   val ADD = Bool()
