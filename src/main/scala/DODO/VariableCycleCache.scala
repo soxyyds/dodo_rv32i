@@ -18,7 +18,7 @@ class DCache(cacheSize: Int = 4 * 1024) extends Module {
   val tagBits = 32 - indexBits - offsetBits
 
   // 缓存状态
-  val idle :: compare :: memAccess :: update :: Nil = Enum(4)
+  val idle :: compare :: update :: Nil = Enum(3)
   val state = RegInit(idle)
 
   // 缓存结构
@@ -50,13 +50,18 @@ class DCache(cacheSize: Int = 4 * 1024) extends Module {
   val hitData = Mux(hit0, way0Data.data, way1Data.data)
   val hitWay = Mux(hit0, 0.U, 1.U)
 
-  // 默认连接
+  // 内存请求信号 - 关键修改点
+  io.mem.req_valid := state === compare && !hit
+  io.mem.req_bits.addr := reqReg.addr
+  io.mem.req_bits.data := reqReg.data
+  io.mem.req_bits.mask := reqReg.mask
+  io.mem.req_bits.cmd := reqReg.cmd
+
+  // 默认值
   io.cpu.req.ready := state === idle
   io.cpu.resp.valid := false.B
   io.cpu.resp.bits.data := 0.U
-  io.mem.req_valid := false.B
-  io.mem.req_bits := DontCare
-  io.mem.resp_ready := true.B
+  io.mem.resp_ready := state === update
   io.stall := state =/= idle
 
   switch(state) {
@@ -91,21 +96,8 @@ class DCache(cacheSize: Int = 4 * 1024) extends Module {
         // 重置状态
         reqValid := false.B
         state := idle
-      }.otherwise {
-        // 缓存未命中，发起内存请求
-        state := memAccess
-      }
-    }
-
-    is(memAccess) {
-      // 发送内存请求
-      io.mem.req_valid := true.B
-      io.mem.req_bits.addr := reqReg.addr
-      io.mem.req_bits.data := reqReg.data
-      io.mem.req_bits.mask := reqReg.mask
-      io.mem.req_bits.cmd := reqReg.cmd
-
-      when(io.mem.req_ready) {
+      }.elsewhen(io.mem.req_ready) {
+        // 缓存未命中且内存已接收请求，直接进入更新状态
         state := update
       }
     }
@@ -120,7 +112,11 @@ class DCache(cacheSize: Int = 4 * 1024) extends Module {
         newLine.tag := reqTag
         newLine.data := io.mem.resp_bits.data
 
-        cache(replacementWay).write(reqIndex, newLine)
+        when(replacementWay === 0.U) {
+          cache(0).write(reqIndex, newLine)
+        }.otherwise {
+          cache(1).write(reqIndex, newLine)
+        }
 
         // 更新FIFO指针
         fifoPtr(reqIndex) := ~fifoPtr(reqIndex)
@@ -140,8 +136,6 @@ class DCache(cacheSize: Int = 4 * 1024) extends Module {
     }
   }
 }
-
-
 
 class DCacheReq extends Bundle {
   val addr = UInt(32.W)
@@ -188,7 +182,6 @@ class MemIO extends Bundle {
   val resp_bits = Input(new MemResp)   // 响应数据
 }
 
-
 class MainMemory(memSize: Int = 1024 * 1024, queueDepth: Int = 4) extends Module {
   val io = IO(new Bundle {
     val mem_port1 = Flipped(new MemIO)  // 第一个端口（如指令获取）
@@ -208,7 +201,7 @@ class MainMemory(memSize: Int = 1024 * 1024, queueDepth: Int = 4) extends Module
   }
 
   // 状态机
-  val idle :: read :: write :: Nil = Enum(3)
+  val idle :: write :: Nil = Enum(2)  // 优化：移除read状态，使读取更快
   val state = RegInit(idle)
 
   // 追踪当前处理的请求来源
@@ -246,8 +239,8 @@ class MainMemory(memSize: Int = 1024 * 1024, queueDepth: Int = 4) extends Module
   // 默认响应无效
   io.mem_port1.resp_valid := false.B
   io.mem_port2.resp_valid := false.B
-  io.mem_port1.resp_bits.data := data_reg
-  io.mem_port2.resp_bits.data := data_reg
+  io.mem_port1.resp_bits.data := 0.U
+  io.mem_port2.resp_bits.data := 0.U
 
   // 状态机处理
   switch(state) {
@@ -256,15 +249,39 @@ class MainMemory(memSize: Int = 1024 * 1024, queueDepth: Int = 4) extends Module
         val request = pendingQueue.io.deq.bits
         pendingQueue.io.deq.ready := true.B
 
-        addr_reg := request.req.addr
-        data_reg := request.req.data
-        mask_reg := request.req.mask
-        currentSource := request.source
+        when(request.req.cmd === 0.U) { // 读操作
+          // 优化：直接读取内存并在同一周期内响应
+          val readData = mem.read(request.req.addr(log2Ceil(memSize)-1, 0))
 
-        when(request.req.cmd === 0.U) {
-          state := read
-          data_reg := mem.read(request.req.addr(log2Ceil(memSize)-1, 0))
-        }.otherwise {
+          when(!request.source) {
+            // 发送到port1
+            io.mem_port1.resp_valid := true.B
+            io.mem_port1.resp_bits.data := readData
+            when(!io.mem_port1.resp_ready) {
+              // 只有在接收端未准备好时才保存数据，否则直接完成
+              addr_reg := request.req.addr
+              data_reg := readData
+              mask_reg := request.req.mask
+              currentSource := request.source
+              state := idle // 保持空闲状态，下个周期重试
+            }
+          }.otherwise {
+            // 发送到port2
+            io.mem_port2.resp_valid := true.B
+            io.mem_port2.resp_bits.data := readData
+            when(!io.mem_port2.resp_ready) {
+              addr_reg := request.req.addr
+              data_reg := readData
+              mask_reg := request.req.mask
+              currentSource := request.source
+              state := idle // 保持空闲状态，下个周期重试
+            }
+          }
+        }.otherwise { // 写操作
+          addr_reg := request.req.addr
+          data_reg := request.req.data
+          mask_reg := request.req.mask
+          currentSource := request.source
           state := write
         }
       }.otherwise {
@@ -272,29 +289,27 @@ class MainMemory(memSize: Int = 1024 * 1024, queueDepth: Int = 4) extends Module
       }
     }
 
-    is(read) {
-      when(!currentSource) {
-        // 发送到port1
-        io.mem_port1.resp_valid := true.B
-        when(io.mem_port1.resp_ready) {
-          state := idle
-        }
-      }.otherwise {
-        // 发送到port2
-        io.mem_port2.resp_valid := true.B
-        when(io.mem_port2.resp_ready) {
-          state := idle
-        }
-      }
-    }
-
     is(write) {
       val addr = addr_reg(log2Ceil(memSize)-1, 0)
       val old_data = mem.read(addr)
       val byte_mask = VecInit(mask_reg.asBools.map(Fill(8, _))).asUInt
-      val new_data = (data_reg & byte_mask) | (old_data & ~byte_mask)
+      val new_data = (data_reg & byte_mask) | (old_data & (~byte_mask).asUInt)
       mem.write(addr, new_data)
-      state := idle
+
+      // 写完成后立即响应
+      when(!currentSource) {
+        io.mem_port1.resp_valid := true.B
+        io.mem_port1.resp_bits.data := data_reg
+        when(io.mem_port1.resp_ready) {
+          state := idle
+        }
+      }.otherwise {
+        io.mem_port2.resp_valid := true.B
+        io.mem_port2.resp_bits.data := data_reg
+        when(io.mem_port2.resp_ready) {
+          state := idle
+        }
+      }
     }
   }
 }
