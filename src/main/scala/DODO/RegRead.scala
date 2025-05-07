@@ -93,6 +93,7 @@ class RegRead extends Module{
     ICB.branch := DPRR.branch
     ICB.load := DPRR.load
     ICB.store := DPRR.store
+    ICB.csr_addr := decode.io.csr_addr
     ICB
   }
 
