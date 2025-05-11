@@ -11,7 +11,7 @@ class BranchIO extends Bundle {
   val taken   = Bool()              // last branch taken
   val index   = UInt(GHR_WIDTH.W)   // last index of PHT
   val pc      = UInt(ADDR_WIDTH.W)  // last instruction PC
-  val target  = UInt(ADDR_WIDTH.W)  // last branch target
+  val target  = UInt(ADDR_WIDTH.W)  // last brCanch target
 }
 
 class BP extends Module {
