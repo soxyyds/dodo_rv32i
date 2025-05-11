@@ -5,13 +5,14 @@ import Const._
 import chisel3.util.log2Ceil
 
 
+  // Branch Information
 class BranchIO extends Bundle {
   val branch  = Bool()              // branch
   val jump    = Bool()              // jal or jalr
-  val taken   = Bool()              // last branch taken
+  val taken   = Bool()              // taken or not
   val index   = UInt(GHR_WIDTH.W)   // last index of PHT
   val pc      = UInt(ADDR_WIDTH.W)  // last instruction PC
-  val target  = UInt(ADDR_WIDTH.W)  // last brCanch target
+  val target  = UInt(ADDR_WIDTH.W)  // last branch target
 }
 
 class BP extends Module {
@@ -24,18 +25,15 @@ class BP extends Module {
   })
 
 
-  // instantiate necessary modules
+  // Connect
   val ghr = Module(new GHR)
   val pht = Module(new PHT)
   val btb = Module(new BTB)
 
-
-  // wire GHR
   ghr.io.branch := io.branchIO.branch
   ghr.io.taken  := io.branchIO.taken
 
 
-  // wire PHT
   val index = io.lookupPc(GHR_WIDTH + ADDR_ALIGN_WIDTH - 1,
     ADDR_ALIGN_WIDTH) ^ ghr.io.ghr    // G-share
   pht.io.lastBranch := io.branchIO.branch
@@ -44,7 +42,6 @@ class BP extends Module {
   pht.io.index      := index
 
 
-  // wire BTB
   btb.io.branch   := io.branchIO.branch
   btb.io.jump     := io.branchIO.jump
   btb.io.pc       := io.branchIO.pc
@@ -52,7 +49,7 @@ class BP extends Module {
   btb.io.lookupPc := io.lookupPc
 
 
-  // wire output signals
+  // Output
   io.predTaken  := btb.io.lookupBranch &&
     (pht.io.taken || btb.io.lookupJump)
   io.predTarget := btb.io.lookupTarget
@@ -60,7 +57,7 @@ class BP extends Module {
 }
 
 
-
+  // Constant Definition
 object Const {
   val ADDR_WIDTH        = 32
   val ADDR_ALIGN_WIDTH  = log2Ceil(ADDR_WIDTH / 8)
