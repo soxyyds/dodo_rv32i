@@ -53,8 +53,12 @@ class RegRead extends Module{
   BJU2.io.src2 <> src4
   BJU2.io.imm <> INSTB.imm
 
-  val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass
-  val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass
+  val InstAisHalt = INSTA.inst(6,0) === "h6b".U(7.W)
+  val InstBisHalt = INSTB.inst(6,0) === "h6b".U(7.W)
+  val InstAisPrint = INSTA.inst(6,0) === "h7b".U(7.W)
+  val InstBisPrint = INSTB.inst(6,0) === "h7b".U(7.W)
+  val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass || InstAisHalt || InstAisPrint
+  val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass || InstBisHalt || InstBisPrint
 
   when(io.Rollback){
     io.RREXA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
