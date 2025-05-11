@@ -1,19 +1,18 @@
 package DODO.BPU
 
 import chisel3._
+import Const._
 
-import consts.Parameters.{GHR_WIDTH, PHT_SIZE}
 
-// pattern history table
 class PHT extends Module {
   val io = IO(new Bundle {
-    // branch information (from decoder)
+    // Branch Information <- BP
     val lastBranch  = Input(Bool())
     val lastTaken   = Input(Bool())
     val lastIndex   = Input(UInt(GHR_WIDTH.W))
     // index for looking up counter table
     val index       = Input(UInt(GHR_WIDTH.W))
-    // prediction result
+    // prediction result -> BP
     val taken       = Output(Bool())
   })
 

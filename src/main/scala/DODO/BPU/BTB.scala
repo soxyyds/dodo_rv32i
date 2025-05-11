@@ -2,6 +2,7 @@ package DODO.BPU
 
 import chisel3._
 import chisel3.util.Cat
+import Const._
 
 // single line in BTB
 class BtbLine extends Bundle {
