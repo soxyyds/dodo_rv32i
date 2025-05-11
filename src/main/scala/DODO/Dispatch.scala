@@ -1,5 +1,5 @@
 package DODO
 
-class Dispitch {
+class Dispatch {
 
 }
