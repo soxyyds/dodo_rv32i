@@ -138,20 +138,20 @@ class memquene extends Module{
   val in_point = RegInit(0.U(4.W))
   val out_point = RegInit(0.U(4.W))
 
-  when(io.rollback){
+  when(io.rollback) {
     in_point := 0.U
     out_point := 0.U
-    for(i <- 0to 15){
-      reserve(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    for(i <- 0 to 15) {
+      reserve(i) := 0.U.asTypeOf(new InstCtrlBlock())  // 清除所有条目
     }
-  }.otherwise(io.memquene_in_A.Valid && io.memquene_in_B.Valid){
+  }.elsewhen(io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_A
-    reserve(in_point + 1.U ) := io.memquene_in_B
+    reserve(in_point + 1.U) := io.memquene_in_B
     in_point := in_point + 2.U
-  }.otherwise(~io.memquene_in_A.Valid && io.memquene_in_B.Valid){
+  }.elsewhen(!io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_B
     in_point := in_point + 1.U
-  }.otherwise(io.memquene_in_A.Valid && ~io.memquene_in_B.Valid){
+  }.elsewhen(io.memquene_in_A.Valid && !io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_A
     in_point := in_point + 1.U
   }
@@ -167,7 +167,9 @@ class memquene extends Module{
 }
 object lowbit {
   def apply(data: UInt): UInt = {
-    data & (~data+1.U)
+    val result = data & (-data).asUInt()
+    result(data.getWidth-1, 0)
   }
 }
+
 
