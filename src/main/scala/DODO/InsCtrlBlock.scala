@@ -24,7 +24,7 @@ class InstCtrlBlock extends Bundle{
   //exe
   val src1 = UInt(32.W)
   val src2 = UInt(32.W)
-  val imm = Unit(32.W)
+  val imm = UInt(32.W)
   val wbdata = UInt(32.W)
   //bundle
   val jump = new JumpIssue
