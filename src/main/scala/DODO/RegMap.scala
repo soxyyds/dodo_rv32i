@@ -1,172 +1,172 @@
+// regmap.scala
 package DODO
-
 
 import chisel3._
 import chisel3.util._
 
-class RegMap extends Module{
+class regmap extends Module{
   val io = IO(new Bundle{
-    val in_A = Input (NEW instrblock)//ÊäÈëĞÅºÅ´«Èë
-    val in_B = Input (NEW instrblock)
-    val out_A = Output (NEW instrblock)
-    val out_B = Output (new instrblock)//ÖØÃüÃûÖ®ºóÖ¸ÁîµÄÊä³ö
-    val enable = Input (Bool()) //Ê¹ÄÜĞÅºÅ ¼´ÔÊĞíÖ¸ÁîµÄ½øÈë
-    val rollback = Input (Bool()) //»Ø¹öĞÅºÅ £¬Èç¹û³öÏÖÁË·ÖÖ§Ô¤²â´íÎó£¬ĞèÒª½øĞĞ»Ø¹öµÄ
+    val in_A = Input (new InstCtrlBlock)//è¾“å…¥ä¿¡å·ä¼ å…¥
+    val in_B = Input (new InstCtrlBlock)
+    val out_A = Output (new InstCtrlBlock)
+    val out_B = Output (new InstCtrlBlock)//é‡å‘½åä¹‹åæŒ‡ä»¤çš„è¾“å‡º
+    val enable = Input (Bool()) //ä½¿èƒ½ä¿¡å· å³å…è®¸æŒ‡ä»¤çš„è¿›å…¥
+    val rollback = Input (Bool()) //å›æ»šä¿¡å· ï¼Œå¦‚æœå‡ºç°äº†åˆ†æ”¯é¢„æµ‹é”™è¯¯ï¼Œéœ€è¦è¿›è¡Œå›æ»šçš„
 
-    val cmt_A = Input(NEW instrblock)//Á½ÌõÔ¤Ìá½»µÄÖ¸ÁîµÄÊäÈë
-    val cmt_B = Input(NEW instrblock)
+    val cmt_A = Input(new InstCtrlBlock)//ä¸¤æ¡é¢„æäº¤çš„æŒ‡ä»¤çš„è¾“å…¥
+    val cmt_B = Input(new InstCtrlBlock)
 
-    val fin_A =Input(NEW instrblock)
-    val fin_B =Input (NEW instrblock)
-    val fin_C =Input (NEW instrblock)
-    val fin_D =Input(NEW instrblock)
-    val fin_E =Input(NEW instrblock)//´«ÈëÎå¸öºóÃæÄ£¿éÍê³ÉµÄĞÅºÅ£¬Ïàµ±ÓÚÇ°À¡ĞÅºÅ
-    //ÓĞ¸öÎÊÌâÕâÊ±ºò´«³öÇ°À¡ĞÅºÅ ÄÇÊ±ºòÖµÒÑ¾­´æÈëÁËÃ´£¿ÕâÊ±ºò´«³öÇ°À¡ĞÅºÅÍê³É£¬
-    //ÄÇÏàÓ¦µÄĞÅºÅ´æ´¢ÁËÃ´£¿Ò²Ğí²»ÓÃ£¿Ö±½Ó´ÓµØÖ·³ö·¢£¬È»ºóÕÒµ½ÒÀÀµµÄ¼Ä´æÆ÷£¬ËùÒÔÎÒÃÇĞèÒª¼ÇÂ¼ÏÂÕâ¸öÒÀÀµ¹ØÏµ
-    //Òò´Ë¼Ä´æÆ÷²»ÄÜÂÒÊÍ·Å£¬ĞèÒªµÈµ½ÏÂÒ»¸öÒÀÀµµÄÖ¸ÁîÍê³ÉÁË£¬ÉÏÒ»¸ö¼Ä´æÆ÷²ÅÄÜÊÍ·Å
-    val num_A =Input (UInt(6.w))
-    val num_B =Input (UInt(6.w))//ÖØÅÅĞò»º³åÇø±àºÅ
-    val regstate = Output (UInt(128.w))//¼ÇÂ¼ÁË128¸ö¼Ä´æÆ÷µÄ¿ÕÏĞ×´Ì¬
-    val regvalues = Output (vec(32,UInt(64.w)))
+    val fin_A =Input(new InstCtrlBlock)
+    val fin_B =Input (new InstCtrlBlock)
+    val fin_C =Input (new InstCtrlBlock)
+    val fin_D =Input(new InstCtrlBlock)
+    val fin_E =Input(new InstCtrlBlock)//ä¼ å…¥äº”ä¸ªåé¢æ¨¡å—å®Œæˆçš„ä¿¡å·ï¼Œç›¸å½“äºå‰é¦ˆä¿¡å·
+    //æœ‰ä¸ªé—®é¢˜è¿™æ—¶å€™ä¼ å‡ºå‰é¦ˆä¿¡å· é‚£æ—¶å€™å€¼å·²ç»å­˜å…¥äº†ä¹ˆï¼Ÿè¿™æ—¶å€™ä¼ å‡ºå‰é¦ˆä¿¡å·å®Œæˆï¼Œ
+    //é‚£ç›¸åº”çš„ä¿¡å·å­˜å‚¨äº†ä¹ˆï¼Ÿä¹Ÿè®¸ä¸ç”¨ï¼Ÿç›´æ¥ä»åœ°å€å‡ºå‘ï¼Œç„¶åæ‰¾åˆ°ä¾èµ–çš„å¯„å­˜å™¨ï¼Œæ‰€ä»¥æˆ‘ä»¬éœ€è¦è®°å½•ä¸‹è¿™ä¸ªä¾èµ–å…³ç³»
+    //å› æ­¤å¯„å­˜å™¨ä¸èƒ½ä¹±é‡Šæ”¾ï¼Œéœ€è¦ç­‰åˆ°ä¸‹ä¸€ä¸ªä¾èµ–çš„æŒ‡ä»¤å®Œæˆäº†ï¼Œä¸Šä¸€ä¸ªå¯„å­˜å™¨æ‰èƒ½é‡Šæ”¾
+    val num_A =Input (UInt(6.W))
+    val num_B =Input (UInt(6.W))//é‡æ’åºç¼“å†²åŒºç¼–å·
+    val regstate : UInt = Output (UInt(128.W))//è®°å½•äº†128ä¸ªå¯„å­˜å™¨çš„ç©ºé—²çŠ¶æ€
+    val regvalues : Vec[UInt]= Output (Vec(32,UInt(64.W)))
   })
-  val reg_A =RegEnable(io.in_A,enable)//¸ù¾İÊ¹ÄÜĞÅºÅÉú³ÉÁ÷Ë®Ïß¼Ä´æÆ÷
-  val reg_B =RegEnable(io.in_B,enable)
-  val inst_A = Mux(~io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  val inst_B = = Mux(~io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  //Ê×ÏÈÒª³õÊ¼»¯ºÃÒ»Ğ©ÒªÓÃµÄ¼ÇÂ¼±í£¬²¢ÇÒÕâĞ©Ä£¿éĞèÒªÌáÇ°×Ô¶¨ÒåºÃ
-  //Èç1£ºÖØÃüÃûµÄÓ³Éä±í ¾ÍÊÇ32¸ö¼Ü¹¹¼Ä´æÆ÷µ½128¸ö£¨7Î»¿í£©ÎïÀí¼Ä´æÆ÷µÄÓ³Éä¹ØÏµ
-  //2 £ºÌá½»±í¼ÇÂ¼ÏÂÓ³ÉäºÍÒÀÀµ¹ØÏµ£¬ÓÃÓÚ»Ø¹ö²Ù×÷
-  //3 £º¼Ü¹¹¼Ä´æÆ÷µÄÖµ
-  //4£ºÎïÀí¼Ä´æÆ÷µÄ×´Ì¬±í£¨ÊÇ·ñ´¦ÓÚ¿ÉÒÔ·ÖÅäµÄ×´Ì¬£©
-  //Ê×ÏÈ¶¨ÒåºÃ³õÊ¼µÄÓ³ÉäÄ£¿é,²¢ÇÒ¶¨ÒåºÃ·½·¨£¬´Ó¶ø¿ÉÒÔ¶ÁÈ¡ºÍĞŞ¸ÄÄÚ²¿µÄÓ³Éä¹ØÏµ
+  val reg_A =RegEnable(io.in_A,io.enable)//æ ¹æ®ä½¿èƒ½ä¿¡å·ç”Ÿæˆæµæ°´çº¿å¯„å­˜å™¨
+  val reg_B =RegEnable(io.in_B,io.enable)
+  val inst_A = Mux(io.enable, reg_A , WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val inst_B = Mux(io.enable, reg_B, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  //é¦–å…ˆè¦åˆå§‹åŒ–å¥½ä¸€äº›è¦ç”¨çš„è®°å½•è¡¨ï¼Œå¹¶ä¸”è¿™äº›æ¨¡å—éœ€è¦æå‰è‡ªå®šä¹‰å¥½
+  //å¦‚1ï¼šé‡å‘½åçš„æ˜ å°„è¡¨ å°±æ˜¯32ä¸ªæ¶æ„å¯„å­˜å™¨åˆ°128ä¸ªï¼ˆ7ä½å®½ï¼‰ç‰©ç†å¯„å­˜å™¨çš„æ˜ å°„å…³ç³»
+  //2 ï¼šæäº¤è¡¨è®°å½•ä¸‹æ˜ å°„å’Œä¾èµ–å…³ç³»ï¼Œç”¨äºå›æ»šæ“ä½œ
+  //3 ï¼šæ¶æ„å¯„å­˜å™¨çš„å€¼
+  //4ï¼šç‰©ç†å¯„å­˜å™¨çš„çŠ¶æ€è¡¨ï¼ˆæ˜¯å¦å¤„äºå¯ä»¥åˆ†é…çš„çŠ¶æ€ï¼‰
+  //é¦–å…ˆå®šä¹‰å¥½åˆå§‹çš„æ˜ å°„æ¨¡å—,å¹¶ä¸”å®šä¹‰å¥½æ–¹æ³•ï¼Œä»è€Œå¯ä»¥è¯»å–å’Œä¿®æ”¹å†…éƒ¨çš„æ˜ å°„å…³ç³»
   class MapBank (depth: Int, width: Int){
-    val map= VecInit(0.U(7.W),1.U(7.W),2.U(7.W),3.U(7.W),4.U(7.W),5.U(7.W),6.U(7.W),7.U(7.W),8.U(7.W),9.U(7.W),10.U(7.W),11.U(7.W),12.U(7.W),13.U(7.W),14.U(7.W),15.U(7.W),16.U(7.W),17.U(7.W),18.U(7.W),19.U(7.W),20.U(7.W),21.U(7.W),22.U(7.W),23.U(7.W),24.U(7.W),25.U(7.W),26.U(7.W),27.U(7.W),28.U(7.W),29.U(7.W),30.U(7.W),31.U(7.W))
-    val table = RegInit(map)
+    val map : Vec[UInt] = VecInit(0.U(width.W),1.U(width.W),2.U(width.W),3.U(width.W),4.U(width.W),5.U(width.W),6.U(width.W),7.U(width.W),8.U(width.W),9.U(width.W),10.U(width.W),11.U(width.W),12.U(7.W),13.U(7.W),14.U(7.W),15.U(7.W),16.U(width.W),17.U(width.W),18.U(width.W),19.U(width.W),20.U(width.W),21.U(width.W),22.U(width.W),23.U(width.W),24.U(width.W),25.U(width.W),26.U(width.W),27.U(width.W),28.U(width.W),29.U(width.W),30.U(width.W),31.U(width.W))
+    val table : Reg[Vec[UInt]]  = RegInit(map)
     def read (num:UInt):UInt={table(num)}
     def write (enable:Bool,num:UInt ,data :UInt):UInt ={
-      when (enable && num =/=0.U) {table(num):=data}
+      when (enable && num =/=0.U) {table(num):= data}
     }
   }
-  val MapTable = new Mapbank(32, 7)//MapTableÍê³ÉÁË½¨Á¢
-  //ÏÂÒ»²½ÊÇÒÑ¾­Ìá½»µÄÖ¸ÁîµÄ¼ÇÂ¼±í£¬ÓÃÓÚ»Ø¹ö²Ù×÷,Ìá½»±íºÍÓ³Éä±íÊÇÍ¬Ò»¸ö½á¹¹Ìå
-  //»Ø¹öµÄÊ±ºò¿ÉÒÔÖ±½ÓÍùÉÏÒ»ÖÃ»»
-  val cmtable = new Mapbank (32,7)
-  //ÏÂÒ»²½¶¨Òå ¼Ü¹¹¼Ä´æÆ÷±í£¬´¢´æ¼Ü¹¹¼Ä´æÆ÷µÄÖµ
+  val MapTable = new MapBank(32, 7)//MapTableå®Œæˆäº†å»ºç«‹
+  //ä¸‹ä¸€æ­¥æ˜¯å·²ç»æäº¤çš„æŒ‡ä»¤çš„è®°å½•è¡¨ï¼Œç”¨äºå›æ»šæ“ä½œ,æäº¤è¡¨å’Œæ˜ å°„è¡¨æ˜¯åŒä¸€ä¸ªç»“æ„ä½“
+  //å›æ»šçš„æ—¶å€™å¯ä»¥ç›´æ¥å¾€ä¸Šä¸€ç½®æ¢
+  val cmtable = new MapBank (32,7)
+  //ä¸‹ä¸€æ­¥å®šä¹‰ æ¶æ„å¯„å­˜å™¨è¡¨ï¼Œå‚¨å­˜æ¶æ„å¯„å­˜å™¨çš„å€¼
   class regvaluebank(depth:Int ,width:Int){
-    val table = RegInit(VecInit(seq.fill(depth)(0.U(width.W))))//ÕâÀïÊÇ´æ´¢µÄÊÇÖµ
+    val table = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//è¿™é‡Œæ˜¯å­˜å‚¨çš„æ˜¯å€¼
     def read (num : UInt):UInt = {table(num)}
     def write (enable:Bool,num:UInt,data:UInt):Unit={
       when(enable && num =/=0.U){table(num):=data}
     }
   }
   val regvalues = new regvaluebank(32,32)
-  //ÕâÀï²»ÖªµÀÎÒÃÇµÄÆ½Ì¨ÊÇRISCV32Ã´
-  //ÏÂÒ»²½¶¨ÒåÎïÀí¼Ä´æÆ÷±í×´Ì¬,ÕâÀïÃæÓ¦¸ÃÉæ¼°ÓĞreadºÍ»½ĞÑ
+  //è¿™é‡Œä¸çŸ¥é“æˆ‘ä»¬çš„å¹³å°æ˜¯RISCV32ä¹ˆ
+  //ä¸‹ä¸€æ­¥å®šä¹‰ç‰©ç†å¯„å­˜å™¨è¡¨çŠ¶æ€,è¿™é‡Œé¢åº”è¯¥æ¶‰åŠæœ‰readå’Œå”¤é†’
   class regstatebank {
-    Ê×ÏÈ¶¨Òå³öËÄ¸ö×´Ì¬
+    //é¦–å…ˆå®šä¹‰å‡ºå››ä¸ªçŠ¶æ€
     // Free: 00
     // Mapped: 01
     // Executed: 10
     // retired: 11
-    //¶¨ÒåºÃ¸´Î»µÄ×´Ì¬£¬Ò»¶¨ÊÇ32¸öÎïÀí¼Ä´æÆ÷ÕıÔÚ±»Ê¹ÓÃ,¸ßµÄ96free µÍµÄ32Õ¼ÓÃ
-    val seqassign = seq.fill(32)(3.U(2.W))
-    val seqfree =seq.fill (96)(0.U(2.w))
+    //å®šä¹‰å¥½å¤ä½çš„çŠ¶æ€ï¼Œä¸€å®šæ˜¯32ä¸ªç‰©ç†å¯„å­˜å™¨æ­£åœ¨è¢«ä½¿ç”¨,é«˜çš„96free ä½çš„32å ç”¨
+    val seqassign = Seq.fill(32)(3.U(2.W))
+    val seqfree = Seq.fill (96)(0.U(2.W))
     val seqstate = seqassign ++ seqfree
     val regstate = RegInit(VecInit(seqstate))
-    //Ê×ÏÈÒªÊéĞ´·ÖÅäÂß¼­
+    //é¦–å…ˆè¦ä¹¦å†™åˆ†é…é€»è¾‘
     val freelist = genfreelist()
     def genfreelist():UInt ={
       val freelist = Wire(Vec(128, UInt(1.W)))
       for(i <- 0to 127){
-        freelist(i) := regstate == 0.U
+        freelist(i) := (regstate(i) === 0.U).asUInt()
       }
       freelist.asUInt
-    }//´«»ØÈ¥128Î»¿íµÄ¶ş½øÖÆÂë
+    }//ä¼ å›å»128ä½å®½çš„äºŒè¿›åˆ¶ç 
     val newfreelist = freelist - lowbit(freelist)
     def freereg_A ():UInt = {Log2(lowbit(freelist))}
     def freereg_B ():UInt = {Log2(lowbit(newfreelist))}
 
     def avalist():UInt ={
-      val avalist = Wire (Vec(128,UInt(1.w)))
+      val avalist = Wire (Vec(128,UInt(1.W)))
       for(i <- 0 to 127){
-        ava(i) := regstate(i)(1)
+        avalist(i) := regstate(i)(1)
       }
       avalist.asUInt
     }
     def write(enable:Bool,num:Bool,data:UInt):Unit={
       when(enable&&num=/=0.U){
-        regstate(num):=data
+        regstate(num):= data
       }
     }
     def rollback(free_num:UInt,retired_num:UInt): Unit = {
       for(i <- 1 to 127 ){
-        when (i.U ==free_num){
+        when (i.U === free_num){
           regstate(i) := 0.U
-        }.elsewhen(i.U == retired_num){
+        }.elsewhen(i.U === retired_num){
           regstate(i) := 3.U
         }.otherwise{
-          when(regstate(i) == 3.U){
+          when(regstate(i) === 3.U){
             regstate(i) := 3.U
           }.otherwise{
             regstate(i) := 0.U
           }
         }
       }
-    }//»Ø¹öµÄÖØÖÃÂß¼­
+    }//å›æ»šçš„é‡ç½®é€»è¾‘
   }
   val regstate = new regstatebank
-  //»ù´¡µÄ³õÊ¼Âß¼­Íê³ÉÁË
-  ½ÓÏÂÀ´ÎÒÃÇĞèÒªÍê³É¹¦ÄÜµÄÊµÏÖÁË
-  //¹¦ÄÜ1 £ºÍê³ÉÏàÓ¦µÄÎïÀí¼Ä´æÆ÷µÄÖØÃüÃû·ÖÅä
-  val regfree_A = wire (UInt())
-  val regfree_B = wire (UInt())
-  when (in_A.redges == 0.U){
+  //åŸºç¡€çš„åˆå§‹é€»è¾‘å®Œæˆäº†
+  //æ¥ä¸‹æ¥æˆ‘ä»¬éœ€è¦å®ŒæˆåŠŸèƒ½çš„å®ç°äº†
+  //åŠŸèƒ½1 ï¼šå®Œæˆç›¸åº”çš„ç‰©ç†å¯„å­˜å™¨çš„é‡å‘½ååˆ†é…
+  val regfree_A = Wire (UInt())
+  val regfree_B = Wire (UInt())
+  when (io.in_A.regdes == 0.U){
     regfree_A := 0.U
   }.otherwise{
     regfree_A :=regstate.freereg_A
   }
-  when (in_B.redges == 0.U){
+  when (io.in_B.regdes == 0.U){
     regfree_B := 0.U
   }.otherwise{
     regfree_B :=regstate.freereg_B
-  }//¼´Îª½øÈëµÄÖ¸ÁîµÄAºÍBµÄÄ¿±ê¼Ä´æÆ÷·ÖÅäºÃÁË¶ÔÓ¦µÄ¼Ä´æÆ÷
-  //¹¦ÄÜ2 £º ¶ÁÈ¡¾ÉµÄÒÀÀµ¹ØÏµ£¬´¦ÀíµôWAWÒÀÀµ
-  val old_depend_A = MapTable.read(in_A.redges)//¾ÍÊÇ¶ÁÈ¡µ±Ç°Õâ¸ö´«ÈëÖ¸ÁîµÄÄ¿±ê¼Ä´æÆ÷ÒÀÀµµÄ¼Ä´æÆ÷
-  val old_depend_B = if(in_A.redges == in_B.redges) old_depend_A else MapTable.read(in_B.redges)
-  //Õâ¸ö·µ»ØµÄÊÇÄ¿Ç°Õâ¸ö¼Ä´æÆ÷ÒÀÀµµÄÎïÀí¼Ä´æÆ÷£¬ÒòÎªÖ¸ÁîÍê³ÉÖ®ºó²¢²»ÄÜÖ±½ÓÊÍ·Å£¬ĞèÒªµÈÏÂÒ»¸öÎïÀí¼Ä´æÆ÷retiredÖ®ºó²ÅÄÜÊÍ·ÅÎïÀí¼Ä´æÆ÷
-  val regrs1_A = MapTable.read(in_A.regsrc1)
-  val regrs2_A = MapTable.read(in_A.regsrc2)
-  val regrs1_B = if(in_A.redges == in_B.regsrc1) old_depend_A else MapTable.read(in_B.regsrc1)
-  val regrs2_B = if(in_A.redges == in_B.regsrc2) old_depend_A else MapTable.read(in_B.regsrc2)
+  }//å³ä¸ºè¿›å…¥çš„æŒ‡ä»¤çš„Aå’ŒBçš„ç›®æ ‡å¯„å­˜å™¨åˆ†é…å¥½äº†å¯¹åº”çš„å¯„å­˜å™¨
+  //åŠŸèƒ½2 ï¼š è¯»å–æ—§çš„ä¾èµ–å…³ç³»ï¼Œå¤„ç†æ‰WAWä¾èµ–
+  val old_depend_A = MapTable.read(io.in_A.regdes)//å°±æ˜¯è¯»å–å½“å‰è¿™ä¸ªä¼ å…¥æŒ‡ä»¤çš„ç›®æ ‡å¯„å­˜å™¨ä¾èµ–çš„å¯„å­˜å™¨
+  val old_depend_B = if(io.in_A.regdes == io.in_B.regdes) old_depend_A else MapTable.read(io.in_B.regdes)
+  //è¿™ä¸ªè¿”å›çš„æ˜¯ç›®å‰è¿™ä¸ªå¯„å­˜å™¨ä¾èµ–çš„ç‰©ç†å¯„å­˜å™¨ï¼Œå› ä¸ºæŒ‡ä»¤å®Œæˆä¹‹åå¹¶ä¸èƒ½ç›´æ¥é‡Šæ”¾ï¼Œéœ€è¦ç­‰ä¸‹ä¸€ä¸ªç‰©ç†å¯„å­˜å™¨retiredä¹‹åæ‰èƒ½é‡Šæ”¾ç‰©ç†å¯„å­˜å™¨
+  val regrs1_A = MapTable.read(io.in_A.regsrc1)
+  val regrs2_A = MapTable.read(io.in_A.regsrc2)
+  val regrs1_B = if(io.in_A.regdes == io.in_B.regsrc1) old_depend_A else MapTable.read(io.in_B.regsrc1)
+  val regrs2_B = if(io.in_A.regdes == io.in_B.regsrc2) old_depend_A else MapTable.read(io.in_B.regsrc2)
   io.regstate := regstate.avalist
-  io.regvalues := regvalues.table//½«¼Ü¹¹¼Ä´æÆ÷µÄÖµ´«Êä³öÈ¥
+  io.regvalues := regvalues.table//å°†æ¶æ„å¯„å­˜å™¨çš„å€¼ä¼ è¾“å‡ºå»
 
-  //¹¦ÄÜ3£º¶ÔÌá½»µ½Õâ¸öregmapÄ£¿éÀïÃæµÄÒÑ¾­Ìá½»µÄÖ¸Áî½øĞĞ´¦Àí¡£¼´ABÁ½ÌõÖ¸ÁîÍËĞİÁË£¬Òª´¦ÀíÒÀÀµµÄÄÇĞ©¼Ä´æÆ÷
-  //Ê×ÏÈÈç¹ûABÁ½¸öÖ¸ÁîµÄÄ¿±ê¼Ä´æÆ÷ÊÇÒ»ÑùµÄ»°£¬ÎÒÃÇ²»ĞèÒªÌá½»A£¬Èç¹û²»Ò»Ñù¾ÍÒªÌá½»
-  when (io.cmt_A.redges=/=io.cmt_B/redges){
-    cmtable.write(io.cmt_A.Valid,io.cmt_A.redges,io.cmt_A.pregdes)//½ö½öÖ»Òª¸üĞÂretirdµÄAĞÅÏ¢¼´¿É
-    regvalues.write(io.cmt_A.Valid,io.cmt_A.redges,io.cmt_A.wbdata)//¸üĞÂ¶ÔÓ¦µÄ¼Ü¹¹¼Ä´æÆ÷
+  //åŠŸèƒ½3ï¼šå¯¹æäº¤åˆ°è¿™ä¸ªregmapæ¨¡å—é‡Œé¢çš„å·²ç»æäº¤çš„æŒ‡ä»¤è¿›è¡Œå¤„ç†ã€‚å³ABä¸¤æ¡æŒ‡ä»¤é€€ä¼‘äº†ï¼Œè¦å¤„ç†ä¾èµ–çš„é‚£äº›å¯„å­˜å™¨
+  //é¦–å…ˆå¦‚æœABä¸¤ä¸ªæŒ‡ä»¤çš„ç›®æ ‡å¯„å­˜å™¨æ˜¯ä¸€æ ·çš„è¯ï¼Œæˆ‘ä»¬ä¸éœ€è¦æäº¤Aï¼Œå¦‚æœä¸ä¸€æ ·å°±è¦æäº¤
+  when (io.cmt_A.regdes=/=io.cmt_B.regdes){
+    cmtable.write(io.cmt_A.Valid,io.cmt_A.regdes,io.cmt_A.pregdes)//ä»…ä»…åªè¦æ›´æ–°retirdçš„Aä¿¡æ¯å³å¯
+    regvalues.write(io.cmt_A.Valid,io.cmt_A.regdes,io.cmt_A.wbdata)//æ›´æ–°å¯¹åº”çš„æ¶æ„å¯„å­˜å™¨
   }
-  cmtable.write(io.cmt_B.Valid,io.cmt_B.redges,io.cmt_B.pregdes)//½ö½öÖ»Òª¸üĞÂretirdµÄAĞÅÏ¢¼´¿É
-  regvalues.write(io.cmt_B.Valid,io.cmt_B.redges,io.cmt_B.wbdata)//¸üĞÂ¶ÔÓ¦µÄ¼Ü¹¹¼Ä´æÆ÷
+  cmtable.write(io.cmt_B.Valid,io.cmt_B.regdes,io.cmt_B.pregdes)//ä»…ä»…åªè¦æ›´æ–°retirdçš„Aä¿¡æ¯å³å¯
+  regvalues.write(io.cmt_B.Valid,io.cmt_B.regdes,io.cmt_B.wbdata)//æ›´æ–°å¯¹åº”çš„æ¶æ„å¯„å­˜å™¨
 
   regstate.write(io.cmt_A.Valid && io.cmt_A.finish, io.cmt_A.pregdes, 3.U(2.W))
   regstate.write(io.cmt_B.Valid && io.cmt_B.finish, io.cmt_B.pregdes, 3.U(2.W))//
-  //ÉÏÃæµÄÊÇÈ¥Ë¢ĞÂĞÂÌá½»µÄ¼Ä´æÆ÷µÄ×´Ì¬ÎªÒÑ¾­Ìá½»
+  //ä¸Šé¢çš„æ˜¯å»åˆ·æ–°æ–°æäº¤çš„å¯„å­˜å™¨çš„çŠ¶æ€ä¸ºå·²ç»æäº¤
   regstate.write(io.cmt_A.Valid && io.cmt_A.finish, io.cmt_A.cmtdes, 0.U(2.W))
   regstate.write(io.cmt_B.Valid && io.cmt_B.finish, io.cmt_B.cmtdes, 0.U(2.W))
-  //È»ºóÎÒÃÇÔÙÈ¥½«¶ÔÓ¦µÄÉÏÒ»¸öÒÀÀµµÄÎïÀí¼Ä´æÆ÷µÄ×´Ì¬´ÓÒÑ¾­Ìá½»Ë¢ĞÂµ½free,´Ó¶øÍê³ÉÁËcmtÖ¸ÁîµÄ×÷ÓÃ
+  //ç„¶åæˆ‘ä»¬å†å»å°†å¯¹åº”çš„ä¸Šä¸€ä¸ªä¾èµ–çš„ç‰©ç†å¯„å­˜å™¨çš„çŠ¶æ€ä»å·²ç»æäº¤åˆ·æ–°åˆ°free,ä»è€Œå®Œæˆäº†cmtæŒ‡ä»¤çš„ä½œç”¨
 
-  //¹¦ÄÜ4£º»Ø¹ö´¦Àí
+  //åŠŸèƒ½4ï¼šå›æ»šå¤„ç†
   when(io.rollback){
-    //Ê×ÏÈ°ÑËùÓĞµÄ¼Ä´æÆ÷µÄÓ³Éä»»³ÉÒÑ¾­Ìá½»µÄÓ³Éä
-    for(i <- 0 ro 31){
+    //é¦–å…ˆæŠŠæ‰€æœ‰çš„å¯„å­˜å™¨çš„æ˜ å°„æ¢æˆå·²ç»æäº¤çš„æ˜ å°„
+    for(i <- 0 to 31){
       MapTable.table(i) := cmtable.table(i)
-    }//µ«ÊÇÓĞ¸öÎÊÌâ¾ÍÊÇ»Ø¹öµÄÊ±ºò Í¬Ê±Ìá½»ÁËAºÍBÁ½¸öÖ¸Áî£¬¶øABË¢ĞÂÕâ¸öcmtableºÍ»Ø¹öµÄwhenÊÇ²¢ĞĞµÄ£¬ËùÒÔĞèÒª±£»¤ÕâÁ½¸ö
+    }//ä½†æ˜¯æœ‰ä¸ªé—®é¢˜å°±æ˜¯å›æ»šçš„æ—¶å€™ åŒæ—¶æäº¤äº†Aå’ŒBä¸¤ä¸ªæŒ‡ä»¤ï¼Œè€ŒABåˆ·æ–°è¿™ä¸ªcmtableå’Œå›æ»šçš„whenæ˜¯å¹¶è¡Œçš„ï¼Œæ‰€ä»¥éœ€è¦ä¿æŠ¤è¿™ä¸¤ä¸ª
     when(io.cmt_A.Valid && io.cmt_A.regdes =/= 0.U) {
       MapTable.table(io.cmt_A.regdes) := io.cmt_A.pregdes
     }
-    when(io.cmt_B.Valid && io.cmt_B.redges =/= 0.U) {
+    when(io.cmt_B.Valid && io.cmt_B.regdes =/= 0.U) {
       MapTable.table(io.cmt_B.regdes) := io.cmt_B.pregdes
     }
     regstate.rollback(io.cmt_A.cmtdes,io.cmt_A.pregdes)
@@ -174,41 +174,41 @@ class RegMap extends Module{
     io.out_A := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     io.out_B := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }.otherwise{
-    //²»»Ø¹öµÄÇé¿öÏÂ£¬ÎÒÃÇÔòĞèÒª¸üĞÂĞÂµÄÓ³Éä¹ØÏµ£¬ÕâÀï±ãÊÇÓ³Éä¹ØÏµµÄÊéĞ´
-    //ĞèÒªÍê³ÉÈı¸öÊÂÇé1£º¼Ä´æÆ÷Ó³Éä¹ØÏµµÄ¸üĞÂ 2£ºÎïÀí¼Ä´æÆ÷×´Ì¬µÄ¹ÜÀí 3£ºÊä³öÖØÃüÃûÖ®ºóµÄÖ¸Áî
+    //ä¸å›æ»šçš„æƒ…å†µä¸‹ï¼Œæˆ‘ä»¬åˆ™éœ€è¦æ›´æ–°æ–°çš„æ˜ å°„å…³ç³»ï¼Œè¿™é‡Œä¾¿æ˜¯æ˜ å°„å…³ç³»çš„ä¹¦å†™
+    //éœ€è¦å®Œæˆä¸‰ä¸ªäº‹æƒ…1ï¼šå¯„å­˜å™¨æ˜ å°„å…³ç³»çš„æ›´æ–° 2ï¼šç‰©ç†å¯„å­˜å™¨çŠ¶æ€çš„ç®¡ç† 3ï¼šè¾“å‡ºé‡å‘½åä¹‹åçš„æŒ‡ä»¤
     when (inst_A =/= inst_B){
-      MapTable.write (inst_A.Valid,inst_A,redges,regfree_A )
+      MapTable.write (inst_A.Valid,inst_A,regdes,regfree_A )
     }
-    MapTable.write (inst_B.Valid,inst_B,redges,regfree_B )//·ÖÅäÁËĞÂµÄÎïÀí¼Ä´æÆ÷¸øËü£¬Õâ¸ö¹ØÏµÒª¸üĞÂ
-    regstate.write(regfree_A=/=0.U,regfree_A,1.U(2.w))
-    regstate.write(regfree_B=/=0.U,regfree_B,1.U(2.w))//Ë¢Ï´¼Ä´æÆ÷µÄÕ¼ÓÃ×´Ì¬±í
+    MapTable.write (inst_B.Valid,inst_B,regdes,regfree_B )//åˆ†é…äº†æ–°çš„ç‰©ç†å¯„å­˜å™¨ç»™å®ƒï¼Œè¿™ä¸ªå…³ç³»è¦æ›´æ–°
+    regstate.write(regfree_A=/=0.U,regfree_A,1.U(2.W))
+    regstate.write(regfree_B=/=0.U,regfree_B,1.U(2.W))//åˆ·æ´—å¯„å­˜å™¨çš„å ç”¨çŠ¶æ€è¡¨
 
-    //Ç°À¡ĞÅºÅÀ´»½ĞÑ¼Ä´æÆ÷µÄ×´Ì¬£¬½«¼Ä´æÆ÷´ÓÕ¼ÓÃ×´Ì¬»½ĞÑµ½Ö´ĞĞÍê³É×´Ì¬
+    //å‰é¦ˆä¿¡å·æ¥å”¤é†’å¯„å­˜å™¨çš„çŠ¶æ€ï¼Œå°†å¯„å­˜å™¨ä»å ç”¨çŠ¶æ€å”¤é†’åˆ°æ‰§è¡Œå®ŒæˆçŠ¶æ€
     regstate.write(io.fin_A.Valid && io.fin_A.finish, io.fin_A.pregdes, 2.U(2.W))
     regstate.write(io.fin_B.Valid && io.fin_B.finish, io.fin_B.pregdes, 2.U(2.W))
     regstate.write(io.fin_C.Valid && io.fin_C.finish, io.fin_C.pregdes, 2.U(2.W))
     regstate.write(io.fin_D.Valid && io.fin_D.finish, io.fin_D.pregdes, 2.U(2.W))
     regstate.write(io.fin_E.Valid && io.fin_E.finish, io.fin_E.pregdes, 2.U(2.W))
 
-    //×îºóÖØĞÂ×é×°ĞÂµÄÖ¸ÁîÊı¾İ¿é
+    //æœ€åé‡æ–°ç»„è£…æ–°çš„æŒ‡ä»¤æ•°æ®å—
     io.out_A :=genall(regrs1_A,regrs2_A,old_depend_A,num_A,inst_A)
     io.out_B :=genall(regrs1_B,regrs2_B,old_depend_B,num_B,inst_B)
   }
-  def genall (presrc1:UInt,presrc2:UInt,predges:UInt,cmtdes:UInt,reorderNum:UInt,inst_in:InstCtrlBlock):InstCtrlBlock = {
-    val inst_end = wire(NEW InstCtrlBlock)
+  def genall (pregsrc1:UInt,pregsrc2:UInt,preggdes:UInt,cmtdes:UInt,reorderNum:UInt,inst_in:InstCtrlBlock):InstCtrlBlock = {
+    val inst_end = Wire(new InstCtrlBlock)
     inst_end.Valid :=inst_in.Valid
     inst_end.inst :=inst_in.inst
     inst_end.pc := inst_in.pc
     inst_end.isa := inst_in.isa
     inst_end.finish := inst_in.finish
-    inst_end.reorderNum := reorderNum//´«»ØÀ´Ë³Ğò
-    inst_end.redges := inst_in.redges
+    inst_end.reOrderNum := reOrderNum//ä¼ å›æ¥é¡ºåº
+    inst_end.regdes := inst_in.regdes
     inst_end.regsrc1 := inst_in.regsrc1
     inst_end.regsrc2 := inst_in.regsrc2
-    inst_end.presrc1 := presrc1//ÖØÃüÃû¼ÓÁË¸öÓ³Éä
-    inst_end.presrc2 := presrc2//ÖØÃüÃû¼ÓÁË¸öÓ³Éä
-    inst_end.predges := predges//ÖØÃüÃû¼ÓÁË¸öÓ³Éä
-    inst_end.cmtdes := cmtdes//¼ÓÉÏÀ´ÒÀÀµ¹ØÏµ
+    inst_end.pregsrc1 := presrc1//é‡å‘½ååŠ äº†ä¸ªæ˜ å°„
+    inst_end.pregsrc2 := presrc2//é‡å‘½ååŠ äº†ä¸ªæ˜ å°„
+    inst_end.pregdes := pregdes//é‡å‘½ååŠ äº†ä¸ªæ˜ å°„
+    inst_end.cmtdes := cmtdes//åŠ ä¸Šæ¥ä¾èµ–å…³ç³»
     inst_end.src1 := inst_in.src1
     inst_end.src2 := inst_in.src2
     inst_end.imm := inst_in.imm
@@ -222,9 +222,9 @@ class RegMap extends Module{
 
   object lowbit {
     def apply(data: UInt): UInt = {
-      data & (~data+1.U)
+      data & (~data + 1.U(data.getWidth.W))
     }
-  }//¸¨Öúº¯Êı£¬±£Áô×îµÍÎ»µÄ1
+  }//è¾…åŠ©å‡½æ•°ï¼Œä¿ç•™æœ€ä½ä½çš„1
   //input : 00101010110
   //output: 00100000000
   object highbit {
@@ -233,3 +233,4 @@ class RegMap extends Module{
     }
   }
 }
+
