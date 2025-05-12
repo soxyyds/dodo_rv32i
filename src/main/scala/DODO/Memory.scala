@@ -104,16 +104,16 @@ class MemoryStage extends Module {
 
 
 
-  val LD_data  = Mux(INST.isa.LD, d_data, 0.U)
+//  val LD_data  = Mux(INST.isa.LD, d_data, 0.U)
   val LW_data  = Mux(INST.isa.LW, SignExt(w_data, 64), 0.U)
   val LH_data  = Mux(INST.isa.LH, SignExt(h_data, 64), 0.U)
   val LB_data  = Mux(INST.isa.LB, SignExt(b_data, 64), 0.U)
-  val LWU_data = Mux(INST.isa.LWU, ZeroExt(w_data, 64), 0.U)
+//  val LWU_data = Mux(INST.isa.LWU, ZeroExt(w_data, 64), 0.U)
   val LHU_data = Mux(INST.isa.LHU, ZeroExt(h_data, 64), 0.U)
   val LBU_data = Mux(INST.isa.LBU, ZeroExt(b_data, 64), 0.U)
 
   // 汇总最终读取数据
-  val LoadData = LD_data | LW_data | LH_data | LB_data | LWU_data | LHU_data | LBU_data
+  val LoadData =  LW_data | LH_data | LB_data |  LHU_data | LBU_data
 
   // === 5. ForwardLoad 直接输出 ===
   io.ForwardLoad := {
