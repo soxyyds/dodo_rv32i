@@ -9,11 +9,11 @@ import chisel3.util._
 // ------------------------
 
 // 数据访问大小枚举
-object MemSize {
-  val BYTE = 0.U(2.W)  // 8位
-  val HALF = 1.U(2.W)  // 16位
-  val WORD = 2.U(2.W)  // 32位
-}
+//object MemSize {
+//  val BYTE = 0.U(2.W)  // 8位
+//  val HALF = 1.U(2.W)  // 16位
+//  val WORD = 2.U(2.W)  // 32位
+//}
 
 // ------------------------
 // I/O Bundle 定义
@@ -32,6 +32,7 @@ class DualPortMemIO extends Bundle {
   val wen   = Input(Bool())
   val ren   = Input(Bool())
   val rdata = Output(UInt(32.W))
+  val ready = Output(Bool())    // 添加就绪状态信号
 }
 
 class DCachePortIO extends Bundle {
@@ -156,72 +157,79 @@ class DCache extends Module {
   // -------------------------------
   // Helper: load 数据裁剪与符号扩展
   def formatLoadData(data: UInt, isHalf: Bool, isByte: Bool, isUnsigned: Bool): UInt = {
+    val byteData  = data(7, 0)
+    val halfData  = data(15, 0)
+    val signExt8  = Cat(Fill(24, byteData(7)), byteData)
+    val signExt16 = Cat(Fill(16, halfData(15)), halfData)
+    val zeroExt8  = Cat(0.U(24.W), byteData)
+    val zeroExt16 = Cat(0.U(16.W), halfData)
     Mux(isByte,
-      Mux(isUnsigned, data(7,0), Cat(Fill(24, data(7)), data(7,0))),
-      Mux(isHalf,
-        Mux(isUnsigned, data(15,0), Cat(Fill(16, data(15)), data(15,0))),
-        data
-      )
+      Mux(isUnsigned, zeroExt8, signExt8),
+      Mux(isHalf, Mux(isUnsigned, zeroExt16, signExt16), data)
     )
   }
 
   // -------------------------------
   // 每个端口的访问处理
-  def handlePort(port: DCachePortIO,
-                 waitCounter: UInt,
-                 waiting: Bool,
-                 missAddr: UInt,
-                 missTag: UInt,
-                 missIdx: UInt,
-                 missData: UInt): Unit = {
+  def handlePort(
+                  port: DCachePortIO,
+                  waitCounter: UInt,
+                  waiting: Bool,
+                  missAddr: UInt,
+                  missTag: UInt,
+                  missIdx: UInt,
+                  missData: UInt
+                ): Unit = {
 
     val index = port.addr(indexWidth + 1, 2)
     val tag   = port.addr(63, indexWidth + 2)
     val cacheHit = validArray(index) && tagArray(index) === tag
-    val cacheData = dataArray(index)
+    val oldData  = dataArray(index)
+    val offset   = port.addr(1, 0)
 
-    when (port.ren || port.wen) {
-      when (cacheHit) {
-        // 命中
-        port.ready := true.B
+    val newData = MuxCase(oldData, Seq(
+      (port.wen && port.isByte && offset === 0.U) -> Cat(oldData(31, 8), port.wdata(7, 0)),
+      (port.wen && port.isByte && offset === 1.U) -> Cat(oldData(31, 16), port.wdata(7, 0), oldData(7, 0)),
+      (port.wen && port.isByte && offset === 2.U) -> Cat(oldData(31, 24), port.wdata(7, 0), oldData(15, 0)),
+      (port.wen && port.isByte && offset === 3.U) -> Cat(port.wdata(7, 0), oldData(23, 0)),
+      (port.wen && port.isHalf && offset === 0.U) -> Cat(oldData(31,16), port.wdata(15,0)),
+      (port.wen && port.isHalf && offset === 2.U) -> Cat(port.wdata(15,0), oldData(15,0)),
+      (port.wen && !port.isByte && !port.isHalf)  -> port.wdata
+    ))
 
-        when (port.ren) {
-          port.rdata := formatLoadData(cacheData, port.isHalf, port.isByte, port.isUnsigned)
-        }
-
-        when (port.wen) {
-          dataArray(index) := port.wdata
-        }
-
-      }.otherwise {
-        // 未命中，触发等待
-        port.ready := false.B
-        when (!waiting) {
-          missAddr := port.addr
-          missTag := tag
-          missIdx := index
-          waiting := true.B
-          waitCounter := 2.U  // 模拟2周期延迟
-        }
+    // 命中时一周期完成
+    when(cacheHit) {
+      when(port.wen) {
+        dataArray(index) := newData
       }
-    }.otherwise {
+      when(port.ren) {
+        port.rdata := formatLoadData(oldData, port.isHalf, port.isByte, port.isUnsigned)
+      }
+      port.ready := true.B
+    } .otherwise {
+      // 未命中，则使用两周期等待
       port.ready := false.B
+      when(!waiting) {
+        missAddr := port.addr
+        missTag  := tag
+        missIdx  := index
+        waiting  := true.B
+        waitCounter := 1.U  // 设置为1，倒数至0共耗时两周期
+      }
     }
 
-    // Miss 等待计数逻辑
-    when (waiting) {
-      when (waitCounter === 0.U) {
-        // 模拟从主存加载
-        tagArray(missIdx) := missTag
-        dataArray(missIdx) := missData  // 可连接真实主存
+    // 等待命中数据写回
+    when(waiting) {
+      when(waitCounter === 0.U) {
+        tagArray(missIdx)   := missTag
+        dataArray(missIdx)  := missData
         validArray(missIdx) := true.B
         waiting := false.B
-      }.otherwise {
+      } .otherwise {
         waitCounter := waitCounter - 1.U
       }
     }
   }
-
   // 初始化输出
   io.port1.rdata := 0.U
   io.port2.rdata := 0.U
@@ -245,11 +253,11 @@ class DCache extends Module {
 class MEM extends Module {
   val io = IO(new MEMIO)
 
-  // 子模块实例化
-  val dcache = Module(new DCache)
-  val memCtrl = Module(new MemCtrl)
+  // 实例化子模块
+  val dcache   = Module(new DCache)
+  val memCtrl  = Module(new MemCtrl)
+  val mainMem  = Module(new DualPortMainMem(4194304)) // 16MB 主存
 
-  // -------------------------------
   // 连接 MemCtrl 控制模块
   memCtrl.io.addr1  := io.req1.addr
   memCtrl.io.addr2  := io.req2.addr
@@ -260,16 +268,14 @@ class MEM extends Module {
   memCtrl.io.op1St  := io.req1.wen
   memCtrl.io.op2St  := io.req2.wen
 
-  // -------------------------------
   // 控制逻辑处理
   val req1_fire = io.req1.valid
   val req2_fire = io.req2.valid && !memCtrl.io.stall2
 
-  val kill1    = memCtrl.io.kill1
-  val bypass2  = memCtrl.io.bypass2
-  val stall2   = memCtrl.io.stall2
+  val kill1   = memCtrl.io.kill1
+  val bypass2 = memCtrl.io.bypass2
+  val stall2  = memCtrl.io.stall2
 
-  // -------------------------------
   // 请求发送给 DCache
   dcache.io.port1.addr       := io.req1.addr
   dcache.io.port1.wdata      := io.req1.wdata
@@ -287,58 +293,61 @@ class MEM extends Module {
   dcache.io.port2.isByte     := io.req2.isByte
   dcache.io.port2.isUnsigned := io.req2.isUnsigned
 
-  // -------------------------------
+  // 连接主存到 DCache，为 miss 路径提供数据
+  // 对于端口1，当发生缺失时，将 missAddr1 送到主存，并读出数据
+  mainMem.io.portA.addr  := dcache.missAddr1(log2Ceil(4194304) + 1, 2)
+  mainMem.io.portA.ren   := dcache.waiting1
+  mainMem.io.portA.wen   := false.B
+  mainMem.io.portA.wdata := 0.U
+  // 同理，对端口2
+  mainMem.io.portB.addr  := dcache.missAddr2(log2Ceil(4194304) + 1, 2)
+  mainMem.io.portB.ren   := dcache.waiting2
+  mainMem.io.portB.wen   := false.B
+  mainMem.io.portB.wdata := 0.U
+
+  // 将主存返回的数据作为 DCache miss 数据写回
+  dcache.missData1 := mainMem.io.portA.rdata
+  dcache.missData2 := mainMem.io.portB.rdata
+
   // 输出响应：Mem2IO
   io.resp1.rdata := dcache.io.port1.rdata
   io.resp1.valid := io.req1.valid && dcache.io.port1.ready
 
-  // 对于第二条指令，如果要 bypass，就返回第一条写入的数据
+  // 如果 bypass，则返回第一条写入的数据
   val bypassData = io.req1.wdata
   io.resp2.rdata := Mux(bypass2, bypassData, dcache.io.port2.rdata)
   io.resp2.valid := io.req2.valid && (dcache.io.port2.ready || bypass2)
 
-  // -------------------------------
   // Stall 信息
   io.req1.stall := io.req1.valid && !dcache.io.port1.ready
-  io.req2.stall := io.req2.valid && (!dcache.io.port2.ready && !bypass2 || stall2)
+  io.req2.stall := io.req2.valid && ((!dcache.io.port2.ready && !bypass2) || stall2)
 }
 
+// ------------------------
+// 主存模块：双端口物理内存
+// ------------------------
+class DualPortMainMem(depth: Int = 4194304) extends Module {
+  val io = IO(new Bundle {
+    val portA = Flipped(new DualPortMemIO)
+    val portB = Flipped(new DualPortMemIO)
+  })
 
-//class DualPortDRAMIO(memDepth: Int) extends Bundle {
-//  val addrA  = Input(UInt(log2Ceil(memDepth).W))
-//  val dinA   = Input(UInt(32.W))
-//  val wenA   = Input(Bool())
-//  val rdataA = Output(UInt(32.W))
-//
-//  val addrB  = Input(UInt(log2Ceil(memDepth).W))
-//  val dinB   = Input(UInt(32.W))
-//  val wenB   = Input(Bool())
-//  val rdataB = Output(UInt(32.W))
-//
-//  // 读使能可根据需求额外添加
-//}
-//
-//
-//
-//class DualPortDRAM(memDepth: Int) extends Module {
-//  val io = IO(new DualPortDRAMIO(memDepth))
-//
-//  // 使用 SyncReadMem 存储 32 位数据
-//  val mem = SyncReadMem(memDepth, UInt(32.W))
-//
-//  // 端口A读写
-//  val portAread = mem.read(io.addrA) // 同步读
-//  val portAdata = Mux(io.wenA, io.dinA, portAread)
-//  when(io.wenA){
-//    mem.write(io.addrA, io.dinA)
-//  }
-//  io.rdataA := portAread
-//
-//  // 端口B读写
-//  val portBread = mem.read(io.addrB)
-//  val portBdata = Mux(io.wenB, io.dinB, portBread)
-//  when(io.wenB){
-//    mem.write(io.addrB, io.dinB)
-//  }
-//  io.rdataB := portBread
-//}
+  // 16MB 主存：每个单元 32 位，即 4 字节，共需要 depth = 16MB/4 = 4,194,304 个数据单元
+  val mem = SyncReadMem(depth, UInt(32.W))
+
+  // 组合读写端口 A
+  when(io.portA.wen) {
+    mem.write(io.portA.addr(log2Ceil(depth) + 1, 2), io.portA.wdata)
+  }
+  val readDataA = mem.read(io.portA.addr(log2Ceil(depth) + 1, 2), io.portA.ren)
+  io.portA.rdata := readDataA
+  io.portA.ready := true.B
+
+  // 组合读写端口 B
+  when(io.portB.wen) {
+    mem.write(io.portB.addr(log2Ceil(depth) + 1, 2), io.portB.wdata)
+  }
+  val readDataB = mem.read(io.portB.addr(log2Ceil(depth) + 1, 2), io.portB.ren)
+  io.portB.rdata := readDataB
+  io.portB.ready := true.B
+}
