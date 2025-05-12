@@ -23,13 +23,11 @@ class dispatch extends Module{
   val memquene = Module (new memquene)
   //然后需要将指令分配到两个保留站里面
   def opcode(inst: InstCtrlBlock): UInt = inst.inst(6, 0)
-  def ismem (inst:InstCtrlBlock) :Bool = {
+  def ismem(inst: InstCtrlBlock): Bool = {
     val op = opcode(inst)
-    op === "b0000011".U || "b0100011".U //Load (LW/LH/LB/LHU/LBU)
+    op === "b0000011".U || op === "b0100011".U  // Load或Store指令
   }
-  def isint (inst:InstCtrlBlock) :Bool = {
-    Bool === !ismem(inst)
-  }
+  def isint(inst: InstCtrlBlock): Bool = !ismem(inst)
   when(isint(io.in_A)){
     intquene.io.intquene_in_A <> io.in_A
     memquene.io.memquene_in_A <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
