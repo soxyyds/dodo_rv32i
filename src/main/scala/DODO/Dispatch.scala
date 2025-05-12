@@ -18,7 +18,7 @@ class dispatch extends Module{
     val enable = Output(Bool())
     val rollback =Input(Bool())
   })
-  //在成功创建好两个保留站，现在需要实例化，并且完成相应的逻辑
+  //在成功创建好两个保留站，现在需要实例化，并且成相应的逻辑
   val intquene = Module (new intquene)
   val memquene = Module (new memquene)
   //然后需要将指令分配到两个保留站里面
