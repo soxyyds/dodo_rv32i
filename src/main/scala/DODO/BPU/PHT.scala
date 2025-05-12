@@ -1,27 +1,26 @@
 package DODO.BPU
 
 import chisel3._
+import Const._
 
-import consts.Parameters.{GHR_WIDTH, PHT_SIZE}
 
-// pattern history table
 class PHT extends Module {
   val io = IO(new Bundle {
-    // branch information (from decoder)
+    // Branch Information <- BP
     val lastBranch  = Input(Bool())
     val lastTaken   = Input(Bool())
     val lastIndex   = Input(UInt(GHR_WIDTH.W))
-    // index for looking up counter table
+    // index for looking up counter table <- BP
     val index       = Input(UInt(GHR_WIDTH.W))
-    // prediction result
+    // prediction result -> BP
     val taken       = Output(Bool())
   })
 
-  // 2-bit saturation counters
+  // Bi-mode
   val init      = Seq.fill(PHT_SIZE) { "b10".U(2.W) }
   val counters  = RegInit(VecInit(init))
 
-  // update counter
+  // Update
   when (io.lastBranch) {
     when (counters(io.lastIndex) === "b11".U) {
       when (!io.lastTaken) {
@@ -32,7 +31,6 @@ class PHT extends Module {
         counters(io.lastIndex) := counters(io.lastIndex) + 1.U
       }
     } .otherwise {
-      // counter === b01 || counter === b10
       when (!io.lastTaken) {
         counters(io.lastIndex) := counters(io.lastIndex) - 1.U
       } .otherwise {
@@ -41,6 +39,6 @@ class PHT extends Module {
     }
   }
 
-  // generate output
+  // Output
   io.taken := counters(io.index)(1)
 }
