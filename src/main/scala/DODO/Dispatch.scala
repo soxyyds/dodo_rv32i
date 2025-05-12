@@ -1,6 +1,6 @@
+//Dispatch.scala
 package DODO
 
-//Dispatch.scal
 import chisel3._
 import chisel3.util._
 
@@ -23,14 +23,13 @@ class dispatch extends Module{
   val memquene = Module (new memquene)
   //然后需要将指令分配到两个保留站里面
   def opcode(inst: InstCtrlBlock): UInt = inst.inst(6, 0)
-      def ismem (inst:InstCtrlBlock) :Bool = {
-            val op = opcode(inst)
-            op === "b0000011".U ||  // Load (LW/LH/LB/LHU/LBU)
-            op === "b0100011".U     //  Store (SW/SH/SB)
-        }
-      def isint (inst:InstCtrlBlock) :Bool = {
-            Bool = !ismem(inst)
-        }
+  def ismem (inst:InstCtrlBlock) :Bool = {
+    val op = opcode(inst)
+    op === "b0000011".U || "b0100011".U //Load (LW/LH/LB/LHU/LBU)
+  }
+  def isint (inst:InstCtrlBlock) :Bool = {
+    Bool === !ismem(inst)
+  }
   when(isint(io.in_A)){
     intquene.io.intquene_in_A <> io.in_A
     memquene.io.memquene_in_A <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -43,7 +42,7 @@ class dispatch extends Module{
     memquene.io.memquene_in_B <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }.otherwise{
     intquene.io.intquene_in_B <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    intquene.io.memquene_in_B <> io.in_B
+    memquene.io.memquene_in_B <> io.in_B
   }
   io.out_A := intquene.io.intquene_out_A
   io.out_B := intquene.io.intquene_out_B
@@ -52,7 +51,7 @@ class dispatch extends Module{
   memquene.io.regstate <> io.regstate
   intquene.io.rollback <> io.rollback
   memquene.io.rollback <> io.rollback
-  enable := ~ (intquene.io.intfull || memquene.io.memfull)
+  io.enable := ~ (intquene.io.intfull || memquene.io.memfull)
 }
 //首先创建两个保留站
 //1：整形保留站
@@ -70,7 +69,7 @@ class intquene extends Module{
   val reserve = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
   //首先把16个槽位的空闲状态通过genfreelist用16位01指令表示出来，然后取最低的即为进队的point，并且取2对数
   val freelist_A = genfreelist_A()
-  val freelist_B = genfreelist_B()
+  val freelist_B = freelist_A - lowbit(freelist_A)
   val in_point_A = Log2(lowbit(freelist_A))
   val in_point_B = Log2(lowbit(freelist_B))
 
@@ -90,7 +89,7 @@ class intquene extends Module{
   def genreadylist_A(): UInt = {
     val readylist = Wire(Vec(16,UInt(1.W)))
     for(i <- 0 to 15){
-      readylist(i) := reserve(i).Valid && io.regstate(reserve(i).pregsrc1) &&io.regstate(reserve(i).pregsrc2)
+      readylist(i) := reserve(i).Valid && io.regstate(reserve(i).pregsrc1) && io.regstate(reserve(i).pregsrc2)
     }
     readylist.asUInt
   }
@@ -117,11 +116,11 @@ class intquene extends Module{
     }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstCtrlBlock()))}
   }
   //这个是用于阻塞判断的，从而避免满状态的出现
-  val freelist_A = genfreelist_A()
-  val freelist_B = genfreelist_B()
-  val in_point_A = Log2(lowbit(freelist_A))
-  val in_point_B = Log2(lowbit(freelist_B))
-  io.intfull := (in_point_A === 0.U)||(in_quene_B === 0.U)
+  freelist_A := genfreelist_A()
+  freelist_B := freelist_A - lowbit(freelist_A)
+  in_point_A := Log2(lowbit(freelist_A))
+  in_point_B := Log2(lowbit(freelist_B))
+  io.intfull := (in_point_A === 0.U)||(in_point_B === 0.U)
 }
 //2：访存保留站
 class memquene extends Module{
@@ -142,19 +141,19 @@ class memquene extends Module{
   when(io.rollback){
     in_point := 0.U
     out_point := 0.U
-    for(i <- 0 to 15){
+    for(i <- 0to 15){
       reserve(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     }
-  }.otherwise(memquene_in_A.Valid && memquene_in_B.Valid){
+  }.otherwise(io.memquene_in_A.Valid && io.memquene_in_B.Valid){
     reserve(in_point) := io.memquene_in_A
     reserve(in_point + 1.U ) := io.memquene_in_B
-    io.in_point = io.point + 2.U
-  }.otherwise(~memquene_in_A.Valid && memquene_in_B.Valid){
+    in_point := in_point + 2.U
+  }.otherwise(~io.memquene_in_A.Valid && io.memquene_in_B.Valid){
     reserve(in_point) := io.memquene_in_B
-    io.in_point := io.point + 1.U
-  }.otherwise(memquene_in_A.Valid && ~memquene_in_B.Valid){
+    in_point := in_point + 1.U
+  }.otherwise(io.memquene_in_A.Valid && ~io.memquene_in_B.Valid){
     reserve(in_point) := io.memquene_in_A
-    io.in_point := io.point + 1.U
+    in_point := in_point + 1.U
   }
   //这里out_point指针指向的是要出站的指令位置，但是要出去必须就绪才可以出去，于是要看它的物理寄存器是否就绪
   when(reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2)){
@@ -166,3 +165,9 @@ class memquene extends Module{
   }
   io.memfull := ((out_point + 1.U ) === in_point || (out_point + 2.U ) === in_point  )
 }
+object lowbit {
+  def apply(data: UInt): UInt = {
+    data & (~data+1.U)
+  }
+}
+
