@@ -3,82 +3,148 @@ package DODO
 import chisel3._
 import chisel3.util._
 
-// Memory阶段：负责load从内存读数，store准备写数（真正写入等到提交）
-class Memory extends Module {
+// ------------------ 定义所需Bundle ------------------
+//!!problem!!:need the definition of InstCtrlBlock(supposed to be in InstCtrlBlock)
+//class InstCtrlBlock extends Bundle{
+//  //base
+//  val Valid = Bool()
+//  val inst = UInt(32.W)
+//  val pc = UInt(64.W)
+//  val isa = new ISA
+//  //reorder
+//  val finish = Bool()
+//  val reOrderNum = UInt(6.W)
+//  //regs
+//  val regdes = UInt(5.W)
+//  val regsrc1 = UInt(5.W)
+//  val regsrc2 = UInt(5.W)
+//  //preg
+//  val pregsrc1 = UInt(7.W)
+//  val pregsrc2 = UInt(7.W)
+//  val pregdes = UInt(7.W)
+//  val cmtdes = UInt(7.W)
+//  //exe
+//  val src1 = UInt(64.W)
+//  val src2 = UInt(64.W)
+//  val imm = new IMM
+//  val wbdata = UInt(64.W)
+//  //bondle
+//  val jump = new JumpIssue
+//  val branch = new BranchIssue
+//  val load = new LoadIssue
+//  val store = new StoreIssue
+//}
+
+class RAMHelperIO extends Bundle{
+  val clk = Output(Clock())
+  val en = Output(Bool())
+  val rIdx = Output(UInt(64.W))
+  val rdata = Input(UInt(64.W))
+  val wIdx = Output(UInt(64.W))
+  val wdata = Output(UInt(64.W))
+  val wmask = Output(UInt(64.W))
+  val wen = Output(Bool())
+}
+// ------------------object define-----------------------
+//extention
+object SignExt{
+  def apply(data: UInt, len: Int) = {
+    val aLen = data.getWidth
+    val signBit = data(aLen-1)
+    if (aLen >= len) data(len-1,0) else Cat(Fill(len - aLen, signBit), data)
+  }
+}
+
+object ZeroExt{
+  def apply(data: UInt, len: Int) = {
+    val aLen = data.getWidth
+    if (aLen >= len) data(len-1,0) else Cat(0.U((len - aLen).W), data)
+  }
+}
+
+
+// ------------------ Memory 阶段模块实现 ------------------
+
+class MemoryStage extends Module {
   val io = IO(new Bundle {
-    val EXMEM = Input(new InstCtrlBlock)  // 来自EX阶段的指令
-    val FinE  = Output(new InstCtrlBlock) // 传给下一阶段的结果
-    val CmtA  = Input(new InstCtrlBlock)  // 来自提交阶段的store信息
+    val EXMEM = Input(new InstCtrlBlock)
+    val FinE = Output(new InstCtrlBlock)
+    val CmtA = Input(new InstCtrlBlock)
 
-    val ForwardLoad  = Output(new LoadIssue)  // 给load做前递的数据
-    val ForwardStore = Input(new StoreIssue)  // 从ROB来的store前递信息
+    val ForwardLoad = Output(new LoadIssue)
+    val ForwardStore = Input(new StoreIssue)
 
-    val Rollback = Input(Bool())  // 回滚信号
-    val DataRam  = new RAMHelperIO // 连接到Data RAM
+    val Rollback = Input(Bool())
+    val DataRam = new RAMHelperIO
   })
 
-  // 把EXMEM信号寄存，作为这一周期使用
+  // === 1. 时序寄存当前指令 ===
   val INST = RegNext(io.EXMEM)
 
-  // 地址偏移：默认是映射到虚拟内存空间
+  // === 2. RAM 接口地址转换 ===
   val Offset = "h0000000080000000".U(64.W)
-
-  // RAM访问控制：load阶段直接读；store等提交再写
-  io.DataRam.clk   := clock
-  io.DataRam.en    := INST.load.Valid || (io.CmtA.Valid && io.CmtA.store.Valid)
-  io.DataRam.rIdx  := Cat(0.U(3.W), (INST.load.addr - Offset)(63, 3))
-  io.DataRam.wIdx  := Cat(0.U(3.W), (io.CmtA.store.addr - Offset)(63, 3))
+  io.DataRam.clk := clock
+  io.DataRam.en  := INST.load.Valid || (io.CmtA.Valid && io.CmtA.store.Valid)
+  io.DataRam.rIdx := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
+  io.DataRam.wIdx := Cat(0.U(3.W), (io.CmtA.store.addr - Offset)(63,3))
   io.DataRam.wdata := io.CmtA.store.data
   io.DataRam.wmask := io.CmtA.store.mask
-  io.DataRam.wen   := io.CmtA.Valid && io.CmtA.store.Valid
+  io.DataRam.wen := io.CmtA.Valid && io.CmtA.store.Valid
 
-  // load会查ROB有没有尚未提交的store写入（前递）
-  io.ForwardLoad := Mux(INST.isa.Lclass, io.FinE.load, 0.U.asTypeOf(new LoadIssue))
-
-  // 如果有前递store，就选用前递数据，否则为0
-  val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U)
-  val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U)
-
-  // 拼接前递数据和内存数据：用mask控制混合哪些字节
+  // === 3. Store Forwarding 拼接逻辑 ===
+  val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
+  val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
   val d_data = (io.DataRam.rdata & ~wmask) | (wdata & wmask)
 
-  // 按照地址低位，逐级选择字节/半字/字
-  val w_data = Mux(INST.load.addr(2), d_data(63, 32), d_data(31, 0))
-  val h_data = Mux(INST.load.addr(1), w_data(31, 16), w_data(15, 0))
-  val b_data = Mux(INST.load.addr(0), h_data(15, 8),  h_data(7, 0))
+  // === 4. 加载类型拼接处理 ===
+  // 从64位总数据中逐级选择目标字节（load类型决定需要哪一段）
+  val w_data = Mux(INST.load.addr(2), d_data(63,32), d_data(31,0))        // 选择 word（4 字节）
+  val h_data = Mux(INST.load.addr(1), w_data(31,16), w_data(15,0))        // 选择 half（2 字节）
+  val b_data = Mux(INST.load.addr(0), h_data(15,8), h_data(7,0))          // 选择 byte（1 字节）
 
-  // 处理不同load指令（有符号/无符号）
-  val LD_data  = SignExt(INST.isa.LD.asUInt, 64)  & d_data
-  val LW_data  = SignExt(INST.isa.LW.asUInt, 64)  & SignExt(w_data, 64)
-  val LH_data  = SignExt(INST.isa.LH.asUInt, 64)  & SignExt(h_data, 64)
-  val LB_data  = SignExt(INST.isa.LB.asUInt, 64)  & SignExt(b_data, 64)
-  val LWU_data = SignExt(INST.isa.LWU.asUInt, 64) & ZeroExt(w_data, 64)
-  val LHU_data = SignExt(INST.isa.LHU.asUInt, 64) & ZeroExt(h_data, 64)
-  val LBU_data = SignExt(INST.isa.LBU.asUInt, 64) & ZeroExt(b_data, 64)
 
-  // 合并最终load数据（只有一种load类型会生效）
-  val LoadData = LD_data | LW_data | LH_data | LB_data | LWU_data | LHU_data | LBU_data
 
-  // 如果发生回滚，FinE置空；否则更新为正常load/store结果
+//  val LD_data  = Mux(INST.isa.LD, d_data, 0.U)
+  val LW_data  = Mux(INST.isa.LW, SignExt(w_data, 64), 0.U)
+  val LH_data  = Mux(INST.isa.LH, SignExt(h_data, 64), 0.U)
+  val LB_data  = Mux(INST.isa.LB, SignExt(b_data, 64), 0.U)
+//  val LWU_data = Mux(INST.isa.LWU, ZeroExt(w_data, 64), 0.U)
+  val LHU_data = Mux(INST.isa.LHU, ZeroExt(h_data, 64), 0.U)
+  val LBU_data = Mux(INST.isa.LBU, ZeroExt(b_data, 64), 0.U)
+
+  // 汇总最终读取数据
+  val LoadData =  LW_data | LH_data | LB_data |  LHU_data | LBU_data
+
+  // === 5. ForwardLoad 直接输出 ===
+  io.ForwardLoad := {
+    val fl = Wire(new LoadIssue)
+    fl.Valid := INST.isa.Lclass
+    fl.addr  := INST.load.addr
+    fl.data  := LoadData
+    fl.Ready := INST.load.Ready
+    fl
+  }
+
+  // === 6. 回滚处理 ===
   when(io.Rollback) {
     io.FinE := 0.U.asTypeOf(new InstCtrlBlock)
-  }.otherwise {
+  } .otherwise {
     io.FinE := GenFin(INST.isa.Lclass || INST.isa.Sclass, LoadData, INST)
   }
 
-  // 封装生成 FinE 的函数
+  // === 7. FinE 构造函数 ===
   def GenFin(finish: Bool, LoadData: UInt, EXMEM: InstCtrlBlock): InstCtrlBlock = {
-    val out = Wire(new InstCtrlBlock)
-    out := EXMEM
-    out.finish := finish
-    out.wbdata := LoadData
+    val ICB = Wire(new InstCtrlBlock)
+    ICB := EXMEM
+    ICB.finish := finish
+    ICB.wbdata := LoadData
 
-    // load返回的数据附带上
-    out.load.Valid := EXMEM.load.Valid
-    out.load.addr  := EXMEM.load.addr
-    out.load.data  := LoadData
-    out.load.Ready := EXMEM.load.Ready
+    ICB.load.Valid := EXMEM.load.Valid
+    ICB.load.addr  := EXMEM.load.addr
+    ICB.load.data  := LoadData
+    ICB.load.Ready := EXMEM.load.Ready
 
-    out
-  }
+    ICB
+}
+
 }
