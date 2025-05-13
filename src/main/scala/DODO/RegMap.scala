@@ -230,3 +230,6 @@ object InstCtrlBlock {
     a.asUInt =/= b.asUInt  // 整体比较
   }
 }
+object RegMap {
+  type AbstractRegBank = RegMap#AbstractRegBank  // 将内部类类型别名暴露出去
+}
