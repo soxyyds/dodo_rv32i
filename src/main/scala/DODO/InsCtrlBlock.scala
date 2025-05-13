@@ -31,7 +31,9 @@ class InstCtrlBlock extends Bundle{
   val branch = new BranchIssue
   val load = new LoadIssue
   val store = new StoreIssue
-  //
+  //csrrw
+  val csr_addr = UInt(12.W)  // CSR地址
+  val csr_wdata = UInt(32.W) // 要写入CSR的数据
 }
 class JumpIssue extends Bundle{
   val Valid = Bool()

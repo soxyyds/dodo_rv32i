@@ -85,6 +85,24 @@ class Top extends Module{
   io.InstRam <> InstFetch.io.InstRam
   io.DataRam <> Memory.io.DataRam
 
+  // CSR寄存器定义
+  val mcycle = RegInit(0.U(64.W))
+  mcycle := mcycle + 1.U  // 自动递增计数器（每个时钟周期+1）
+
+  // 提交阶段A处理
+  when (Commit.io.CmtA.Valid && Commit.io.CmtA.isa.CSRRW) {
+    when (Commit.io.CmtA.csr_addr === 0xB00.U) {  // mcycle地址匹配
+      mcycle := Commit.io.CmtA.wbdata            // 写回数据直接更新计数器
+    }
+  }
+
+  // 提交阶段B处理（双提交通道设计）
+  when (Commit.io.CmtB.Valid && Commit.io.CmtB.isa.CSRRW) {
+    when (Commit.io.CmtB.csr_addr === 0xB00.U) {  // 统一地址匹配逻辑
+      mcycle := Commit.io.CmtB.wbdata
+    }
+  }
+
   // difftest
 //  val CmtA = Commit.io.CmtA
 //  val CmtB = Commit.io.CmtB

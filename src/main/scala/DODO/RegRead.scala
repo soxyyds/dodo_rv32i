@@ -25,7 +25,7 @@ class RegRead extends Module{
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
 
-  val PhyRegFile = new AbstractRegBank(128, 64)
+  val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -72,6 +72,12 @@ class RegRead extends Module{
     io.RREXC := GenICB(src5, src6, INSTC)
     io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
     io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
+
+    // 新增CSR信号连接（关键添加点）
+    io.RREXA.csr_addr  := INSTA.csr_addr  // 传递解码后的CSR地址
+    io.RREXA.csr_wdata := src1          // 源寄存器1作为CSR写数据
+    io.RREXB.csr_addr  := INSTB.csr_addr // 双发射架构需同时处理B通道
+    io.RREXB.csr_wdata := src3
   }
 
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
@@ -97,7 +103,6 @@ class RegRead extends Module{
     ICB.branch := DPRR.branch
     ICB.load := DPRR.load
     ICB.store := DPRR.store
-    ICB.csr_addr := decode.io.csr_addr
     ICB
   }
 

@@ -111,6 +111,13 @@ class Commit extends Module{
     HitVec.asUInt
   }
 
+  // 传递CSR写数据
+  when (io.CmtA.isa.CSRRW) {
+    io.CmtA.csr_wdata := io.CmtA.src1
+  }
+  when (io.CmtB.isa.CSRRW) {
+    io.CmtB.csr_wdata := io.CmtB.src1
+  }
 }
 
 object CyclicShiftLeft {
