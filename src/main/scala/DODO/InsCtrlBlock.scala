@@ -59,6 +59,15 @@ class StoreIssue extends Bundle{
   val Ready = Bool()
 }
 
+class IMM extends Bundle {
+  val I = UInt(32.W)
+  val B = UInt(32.W)
+  val S = UInt(32.W)
+  val U = UInt(32.W)
+  val J = UInt(32.W)
+  val Z = UInt(32.W)
+}
+
 
 class ISA extends Bundle{
   // Arithmetic
