@@ -228,7 +228,5 @@ class RegMap extends Module{
 object InstCtrlBlock {
   def =/=(a: InstCtrlBlock, b: InstCtrlBlock): Bool = {
     a.asUInt =/= b.asUInt  // 整体比较
-    // 或精确比较关键字段：
-    // (a.inst =/= b.inst) || (a.pc =/= b.pc) || ...
   }
 }
