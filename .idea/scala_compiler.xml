@@ -4,7 +4,7 @@
     <profile name="sbt 1" modules="dodo_rv32i_3166" />
     <profile name="sbt 2" modules="dodo_rv32i">
       <plugins>
-        <plugin path="C:\Users\haoyu\AppData\Local\Coursier\Cache\v1\https\repo1.maven.org\maven2\edu\berkeley\cs\chisel3-plugin_2.12.12\3.5.4\chisel3-plugin_2.12.12-3.5.4.jar" />
+        <plugin path="C:\Users\Cauchy\AppData\Local\Coursier\Cache\v1\https\repo1.maven.org\maven2\edu\berkeley\cs\chisel3-plugin_2.12.12\3.5.4\chisel3-plugin_2.12.12-3.5.4.jar" />
       </plugins>
     </profile>
   </component>

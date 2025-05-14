@@ -65,8 +65,7 @@ class InstDecode extends Module {
     ICB.regsrc1 := regsrc1
     ICB.regsrc2 := regsrc2
     ICB.imm := imm
-    ICB.csr_addr := csr_addr
-
+    ICB.csr_addr := csr_addr //csr
     ICB
   }
 }
@@ -112,6 +111,9 @@ class Decoder extends Module {
   io.imm.U := U  // U-type已经是32位
   io.imm.J := SignExt(J, 32)
 
+  // 识别CSRRW指令 (opcode=SYSTEM, func3=001)
+  io.isa.CSRRW := (io.inst(6,0) === "b1110011".U) &&
+    (io.inst(14,12) === "b001".U)
   // CSR地址
   io.csr_addr := io.inst(31,20)
 

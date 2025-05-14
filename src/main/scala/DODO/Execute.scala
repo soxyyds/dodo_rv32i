@@ -112,6 +112,7 @@ class ArithmeticLogicalUnit extends Module{
     val src2 = Input(UInt(64.W))
     val imm = Input(new IMM)
     val result = Output(UInt(64.W))
+    val csr_rdata = Input(UInt(64.W)) // 来自CSR的读数据
   })
 
   //Arithmetic
@@ -155,9 +156,10 @@ class ArithmeticLogicalUnit extends Module{
   val link    = SignExt((io.isa.JAL | io.isa.JALR).asUInt, 64)  & (io.pc + 4.U)
   val auipc   = SignExt(io.isa.AUIPC.asUInt, 64) & (io.pc + io.imm.U)
 
-  io.result := Arithmetic | Logical | Compare | Shifts | link | auipc
+  val csr_result = Mux(io.isa.CSRRW, io.csr_rdata, 0.U) //csr
+  io.result := Arithmetic | Logical | Compare | Shifts | link | auipc | csr_result
 
-}
+
 
 class AddressGenerationUnit extends Module{
   val io = IO(new Bundle{

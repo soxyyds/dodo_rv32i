@@ -54,7 +54,7 @@ class RegMap extends Module{
   //回滚的时候可以直接往上一置换
   val cmtable:InitIncreaseRegBank = new InitIncreaseRegBank (32,7)
   //下一步定义 架构寄存器表，储存架构寄存器的值
-  class AbstractRegBank(depth:Int ,width:Int){
+  class AbstractRegBank(depth:Int,width:Int){
     val table: Vec[UInt] = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//这里是存储的是值
     def read (num : UInt):UInt = {table(num)}
     def write (enable:Bool,num:UInt,data:UInt):Unit={
