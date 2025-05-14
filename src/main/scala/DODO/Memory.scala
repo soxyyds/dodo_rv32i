@@ -35,32 +35,32 @@ import chisel3.util._
 //  val store = new StoreIssue
 //}
 
-class RAMHelperIO extends Bundle{
-  val clk = Output(Clock())
-  val en = Output(Bool())
-  val rIdx = Output(UInt(64.W))
-  val rdata = Input(UInt(64.W))
-  val wIdx = Output(UInt(64.W))
-  val wdata = Output(UInt(64.W))
-  val wmask = Output(UInt(64.W))
-  val wen = Output(Bool())
-}
+//class RAMHelperIO extends Bundle{
+//  val clk = Output(Clock())
+//  val en = Output(Bool())
+//  val rIdx = Output(UInt(64.W))
+//  val rdata = Input(UInt(64.W))
+//  val wIdx = Output(UInt(64.W))
+//  val wdata = Output(UInt(64.W))
+//  val wmask = Output(UInt(64.W))
+//  val wen = Output(Bool())
+//}
 // ------------------object define-----------------------
-//extention
-object SignExt{
-  def apply(data: UInt, len: Int) = {
-    val aLen = data.getWidth
-    val signBit = data(aLen-1)
-    if (aLen >= len) data(len-1,0) else Cat(Fill(len - aLen, signBit), data)
-  }
-}
-
-object ZeroExt{
-  def apply(data: UInt, len: Int) = {
-    val aLen = data.getWidth
-    if (aLen >= len) data(len-1,0) else Cat(0.U((len - aLen).W), data)
-  }
-}
+////extention
+//object SignExt{
+//  def apply(data: UInt, len: Int) = {
+//    val aLen = data.getWidth
+//    val signBit = data(aLen-1)
+//    if (aLen >= len) data(len-1,0) else Cat(Fill(len - aLen, signBit), data)
+//  }
+//}
+//
+//object ZeroExt{
+//  def apply(data: UInt, len: Int) = {
+//    val aLen = data.getWidth
+//    if (aLen >= len) data(len-1,0) else Cat(0.U((len - aLen).W), data)
+//  }
+//}
 
 
 // ------------------ Memory 阶段模块实现 ------------------
