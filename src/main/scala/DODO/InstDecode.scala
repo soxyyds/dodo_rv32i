@@ -15,18 +15,23 @@ class InstDecode extends Module {
   })
 
   // 流水线寄存器
-  val RegA = RegEnable(io.IFIDA, ~io.FetchBlock)
-  val RegB = RegEnable(io.IFIDB, ~io.FetchBlock)
+  val RegA = Reg(new InstCtrlBlock)
+  val RegB = Reg(new InstCtrlBlock)
+
+  when(!io.FetchBlock) {
+    RegA := io.IFIDA
+    RegB := io.IFIDB
+  }
 
   // 指令选择逻辑
-  val INSTA = Mux(~io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  val INSTB = Mux(~io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val INSTA = Mux(!io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val INSTB = Mux(!io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
 
   // 解码器实例
   val decodeA = Module(new Decoder)
   val decodeB = Module(new Decoder)
-  decodeA.io.inst <> INSTA.inst
-  decodeB.io.inst <> INSTB.inst
+  decodeA.io.inst := INSTA.inst
+  decodeB.io.inst := INSTB.inst
 
   // 流水线控制
   when(io.Rollback) {
@@ -112,8 +117,18 @@ class Decoder extends Module {
 
   // 寄存器操作数识别
   val wen = io.isa.Aclass || io.isa.Jclass || io.isa.Lclass || io.isa.CSRRW
-  val src1 = /* 识别需要rs1的指令 */
-  val src2 = /* 识别需要rs2的指令 */
+  val src1 =  (io.isa.Aclass() && !(io.isa.LUI || io.isa.AUIPC)) ||
+    io.isa.Bclass() ||
+    io.isa.Sclass() ||
+    io.isa.Lclass() ||
+    io.isa.JALR/* 识别需要rs1的指令 */
+  val src2 =(io.isa.Aclass() &&
+    (io.isa.ADD || io.isa.SUB ||
+      io.isa.SLL || io.isa.SRL ||
+      io.isa.AND || io.isa.OR ||
+      io.isa.SLT || io.isa.SLTU)) ||
+    io.isa.Bclass() ||
+    io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
 
     io.regdes := Mux(wen, io.inst(11,7), 0.U)
   io.regsrc1 := Mux(src1, io.inst(19,15), 0.U)
