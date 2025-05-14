@@ -3,7 +3,7 @@ package DODO
 import DODO.BPU.Const.ADDR_WIDTH
 import chisel3._
 import chisel3.util._
-import DODO.BPU._
+import DODO.BPU._ //导入分支预测器相关模块
 
 class InstDecode extends Module {
   val io = IO(new Bundle{
@@ -121,18 +121,18 @@ class Decoder extends Module {
   io.isa.BEQ := (io.inst === BitPat("b???????_?????_?????_000_?????_1100011"))
   // ... 其他分支指令
 
-  // 立即数提取（32位版本）
+  // 立即数提取
   val I = io.inst(31,20)  // I-type
   val B = Cat(io.inst(31), io.inst(7), io.inst(30,25), io.inst(11,8), 0.U(1.W)) // B-type
   val S = Cat(io.inst(31,25), io.inst(11,7)) // S-type
   val U = io.inst(31,12)  // U-type（不需要填充0）
   val J = Cat(io.inst(31), io.inst(19,12), io.inst(20), io.inst(30,21), 0.U(1.W)) // J-type
 
-  // 32位立即数扩展（不再扩展到64位）
+  // 32位立即数扩展
   io.imm.I := SignExt(I, 32)
   io.imm.B := SignExt(B, 32)
   io.imm.S := SignExt(S, 32)
-  io.imm.U := U  // U-type已经是32位
+  io.imm.U := U  //
   io.imm.J := SignExt(J, 32)
 
   // 识别CSRRW指令 (opcode=SYSTEM, func3=001)
