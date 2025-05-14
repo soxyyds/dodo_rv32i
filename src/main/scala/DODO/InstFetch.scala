@@ -117,7 +117,6 @@ class InstFetch extends Module {
     ICB.branch := WireInit(0.U.asTypeOf(new BranchIssue()))
     ICB.load := WireInit(0.U.asTypeOf(new LoadIssue()))
     ICB.store := WireInit(0.U.asTypeOf(new StoreIssue()))
-    ICB.csr_addr := decode.io.csr_addr // 传递CSR地址
     ICB
   }
 }
