@@ -94,7 +94,7 @@ class MemoryStage extends Module {
   // === 3. Store Forwarding 拼接逻辑 ===
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
   val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
-  val d_data = (io.DataRam.rdata & ~wmask) | (wdata & wmask)
+  val d_data = (io.DataRam.rdata & !wmask) | (wdata & wmask)
 
   // === 4. 加载类型拼接处理 ===
   // 从64位总数据中逐级选择目标字节（load类型决定需要哪一段）

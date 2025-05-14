@@ -104,68 +104,65 @@ class Execute extends Module{
 
 }
 
-class ArithmeticLogicalUnit extends Module{
-  val io = IO(new Bundle{
+class ArithmeticLogicalUnit extends Module {
+  val io = IO(new Bundle {
     val isa = Input(new ISA)
-    val pc = Input(UInt(64.W))
-    val src1 = Input(UInt(64.W))
-    val src2 = Input(UInt(64.W))
+    val pc = Input(UInt(32.W))
+    val src1 = Input(UInt(32.W))
+    val src2 = Input(UInt(32.W))
     val imm = Input(new IMM)
-    val result = Output(UInt(64.W))
-    val csr_rdata = Input(UInt(64.W)) // 来自CSR的读数据
+    val result = Output(UInt(32.W))
+    val csr_rdata = Input(UInt(32.W)) // 来自CSR的读数据
   })
 
   //Arithmetic
-  val addi	= SignExt(io.isa.ADDI.asUInt, 64)	& (io.src1 + io.imm.I)
-  val add 	= SignExt(io.isa.ADD.asUInt, 64)	& (io.src1 + io.src2)
-  val lui 	= SignExt(io.isa.LUI.asUInt, 64)	& (io.imm.U)
-  val sub		= SignExt(io.isa.SUB.asUInt, 64)	& (io.src1 - io.src2)
-  val addiw 	= SignExt(io.isa.ADDIW.asUInt, 64)	& SignExt((io.src1 + io.imm.I)(31,0), 64)
-  val addw 	= SignExt(io.isa.ADDW.asUInt, 64)	& SignExt((io.src1 + io.src2)(31,0), 64)
-  val subw 	= SignExt(io.isa.SUBW.asUInt, 64)	& SignExt((io.src1 - io.src2)(31,0), 64)
-  val Arithmetic = addi | add | lui | sub | addiw | addw | subw
+  val addi = io.isa.ADDI & (io.src1 + io.imm.I)
+  val add  = io.isa.ADD  & (io.src1 + io.src2)
+  val lui  = io.isa.LUI  & io.imm.U
+  val sub  = io.isa.SUB  & (io.src1 - io.src2)
+  val Arithmetic = addi | add | lui | sub
   //Logical
-  val andi	= SignExt(io.isa.ANDI.asUInt, 64)	& (io.src1 & io.imm.I)
-  val and		= SignExt(io.isa.AND.asUInt, 64)	& (io.src1 & io.src2)
-  val ori		= SignExt(io.isa.ORI.asUInt, 64)	& (io.src1 | io.imm.I)
-  val or		= SignExt(io.isa.OR.asUInt, 64)		& (io.src1 | io.src2)
-  val xori	= SignExt(io.isa.XORI.asUInt, 64)	& (io.src1 ^ io.imm.I)
-  val xor		= SignExt(io.isa.XOR.asUInt, 64)	& (io.src1 ^ io.src2)
+  val andi = io.isa.ANDI & (io.src1 & io.imm.I)
+  val and  = io.isa.AND  & (io.src1 & io.src2)
+  val ori  = io.isa.ORI  & (io.src1 | io.imm.I)
+  val or   = io.isa.OR   & (io.src1 | io.src2)
+  val xori = io.isa.XORI & (io.src1 ^ io.imm.I)
+  val xor  = io.isa.XOR  & (io.src1 ^ io.src2)
   val Logical = andi | and | ori | or | xori | xor
+
   //Compare
-  val slt 	= Mux((io.isa.SLT 	&& (io.src1.asSInt < io.src2.asSInt)), 	1.U(64.W), 0.U(64.W))
-  val slti 	= Mux((io.isa.SLTI 	&& (io.src1.asSInt < io.imm.I.asSInt)),	1.U(64.W), 0.U(64.W))
-  val sltu 	= Mux((io.isa.SLTU 	&& (io.src1.asUInt < io.src2.asUInt)), 	1.U(64.W), 0.U(64.W))
-  val sltiu 	= Mux((io.isa.SLTIU	&& (io.src1.asUInt < io.imm.I.asUInt)),	1.U(64.W), 0.U(64.W))
+  val slt   = io.isa.SLT   & Mux(io.src1.asSInt < io.src2.asSInt, 1.U, 0.U)
+  val slti  = io.isa.SLTI  & Mux(io.src1.asSInt < io.imm.I.asSInt, 1.U, 0.U)
+  val sltu  = io.isa.SLTU  & Mux(io.src1 < io.src2, 1.U, 0.U)
+  val sltiu = io.isa.SLTIU & Mux(io.src1 < io.imm.I, 1.U, 0.U)
   val Compare = slt | slti | sltu | sltiu
   //Shifts
-  val sll		= SignExt(io.isa.SLL.asUInt, 64)	& (io.src1 			<< io.src2(5,0))(63,0)
-  val srl		= SignExt(io.isa.SRL.asUInt, 64)	& (io.src1 			>> io.src2(5,0))
-  val sra		= SignExt(io.isa.SRA.asUInt, 64)	& (io.src1.asSInt 	>> io.src2(5,0)).asUInt
-  val slli	= SignExt(io.isa.SLLI.asUInt, 64)	& (io.src1 			<< io.imm.I(5,0))(63,0)
-  val srli	= SignExt(io.isa.SRLI.asUInt, 64)	& (io.src1			>> io.imm.I(5,0))
-  val srai	= SignExt(io.isa.SRAI.asUInt, 64)	& (io.src1.asSInt	>> io.imm.I(5,0)).asUInt
-  val sllw	= SignExt(io.isa.SLLW.asUInt, 64)	& SignExt((io.src1				<< io.src2(4,0))(31,0)	, 64)
-  val srlw	= SignExt(io.isa.SRLW.asUInt, 64)	& SignExt((io.src1(31,0)		>> io.src2(4,0))		, 64)
-  val sraw	= SignExt(io.isa.SRAW.asUInt, 64)	& SignExt((io.src1(31,0).asSInt	>> io.src2(4,0)).asUInt	, 64)
-  val slliw	= SignExt(io.isa.SLLIW.asUInt, 64)	& SignExt((io.src1 				<< io.imm.I(4,0))(31,0)	, 64)
-  val srliw	= SignExt(io.isa.SRLIW.asUInt, 64)	& SignExt((io.src1(31,0)		>> io.imm.I(4,0))		, 64)
-  val sraiw	= SignExt(io.isa.SRAIW.asUInt, 64)	& SignExt((io.src1(31,0).asSInt >> io.imm.I(4,0)).asUInt, 64)
-  val Shifts 	= sll | srl | sra | slli | srli | srai | sllw | srlw | sraw | slliw | srliw | sraiw
+  private def getShiftAmount(useImm: Bool) =
+    Mux(useImm, io.imm.I(4,0), io.src2(4,0))
+  val shiftReg = getShiftAmount(false.B)
+  val sll  = io.isa.SLL  & (io.src1 << shiftReg)(31,0)
+  val srl  = io.isa.SRL  & (io.src1 >> shiftReg)
+  val sra  = io.isa.SRA  & (io.src1.asSInt >> shiftReg).asUInt
+  // 立即数移位版本（使用imm.I作为移位量）
+  val shiftImm = getShiftAmount(true.B)
+  val slli = io.isa.SLLI & (io.src1 << shiftImm)(31,0)
+  val srli = io.isa.SRLI & (io.src1 >> shiftImm)
+  val srai = io.isa.SRAI & (io.src1.asSInt >> shiftImm).asUInt
 
-  val link    = SignExt((io.isa.JAL | io.isa.JALR).asUInt, 64)  & (io.pc + 4.U)
-  val auipc   = SignExt(io.isa.AUIPC.asUInt, 64) & (io.pc + io.imm.U)
+  val Shifts = sll | srl | sra | slli | srli | srai
+
+  val link = SignExt((io.isa.JAL | io.isa.JALR).asUInt, 32) & (io.pc + 4.U)
+  val auipc = SignExt(io.isa.AUIPC.asUInt, 32) & (io.pc + io.imm.U)
 
   val csr_result = Mux(io.isa.CSRRW, io.csr_rdata, 0.U) //csr
   io.result := Arithmetic | Logical | Compare | Shifts | link | auipc | csr_result
-
-
+}
 
 class AddressGenerationUnit extends Module{
   val io = IO(new Bundle{
     val isa = Input(new ISA)
-    val src1 = Input(UInt(64.W))
-    val src2 = Input(UInt(64.W))
+    val src1 = Input(UInt(32.W))
+    val src2 = Input(UInt(32.W))
     val imm = Input(new IMM)
     val load = Output(new LoadIssue)
     val store = Output(new StoreIssue)
@@ -178,26 +175,23 @@ class AddressGenerationUnit extends Module{
 
   io.store.Valid := io.isa.Sclass
   io.store.addr := io.src1 + io.imm.S
-  val SD_data = SignExt(io.isa.SD.asUInt, 64) & io.src2
-  val SW_data = SignExt(io.isa.SW.asUInt, 64) & Cat(io.src2(31,0), io.src2(31,0))
-  val SH_data = SignExt(io.isa.SH.asUInt, 64) & Cat(io.src2(15,0), io.src2(15,0), io.src2(15,0), io.src2(15,0))
-  val SB_data = SignExt(io.isa.SB.asUInt, 64) & Cat(io.src2(7,0), io.src2(7,0), io.src2(7,0), io.src2(7,0), io.src2(7,0), io.src2(7,0), io.src2(7,0), io.src2(7,0))
-  io.store.data := SD_data | SW_data | SH_data | SB_data
-  val d_mask = SignExt(io.isa.SD.asUInt, 8) & "b1111_1111".U(8.W)
-  val w_mask = SignExt(io.isa.SW.asUInt, 8) & ("b0000_1111".U(8.W) << io.store.addr(2,0))
-  val h_mask = SignExt(io.isa.SH.asUInt, 8) & ("b0000_0011".U(8.W) << io.store.addr(2,0))
-  val b_mask = SignExt(io.isa.SB.asUInt, 8) & ("b0000_0001".U(8.W) << io.store.addr(2,0))
-  val byte_mask = d_mask | w_mask | h_mask | b_mask
-  //8 bit mask -> 64 bit mask
-  val byte_mask_0 = Mux(byte_mask(0).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_1 = Mux(byte_mask(1).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_2 = Mux(byte_mask(2).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_3 = Mux(byte_mask(3).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_4 = Mux(byte_mask(4).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_5 = Mux(byte_mask(5).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_6 = Mux(byte_mask(6).asBool(), "hff".U(8.W), 0.U(8.W))
-  val byte_mask_7 = Mux(byte_mask(7).asBool(), "hff".U(8.W), 0.U(8.W))
-  io.store.mask := Cat(byte_mask_7, byte_mask_6, byte_mask_5, byte_mask_4, byte_mask_3, byte_mask_2, byte_mask_1, byte_mask_0)
+
+
+  val SW_data = io.isa.SW & io.src2(31,0)
+  val SH_data = io.isa.SH & Cat(Fill(16, io.src2(15)), io.src2(15,0))
+  val SB_data = io.isa.SB & Cat(Fill(24, io.src2(7)), io.src2(7,0))
+  io.store.data := SW_data | SH_data | SB_data
+  val byte_mask = MuxCase(0.U(4.W), Seq(
+    io.isa.SW -> "b1111".U(4.W),
+    io.isa.SH -> ("b11".U << io.store.addr(1,0))(3,0),
+    io.isa.SB -> ("b1".U << io.store.addr(1,0))(3,0)
+  ))
+  io.store.mask := Cat(
+    Fill(8, byte_mask(3)),
+    Fill(8, byte_mask(2)),
+    Fill(8, byte_mask(1)),
+    Fill(8, byte_mask(0))
+  )
   io.store.Ready := false.B
 
 }
