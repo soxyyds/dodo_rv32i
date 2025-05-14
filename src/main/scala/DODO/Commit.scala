@@ -40,7 +40,7 @@ class Commit extends Module {
   val CmtBranchJump = (CmtB.isa.Bclass || CmtB.isa.Jclass).asBool
   val Aready = (CmtA.Valid && CmtA.finish).asBool
 
-  io.Rollback := (Aready && (CmtA.jump.Valid || (CmtA.branch.Valid && CmtA.branch.actTaken))).asBool
+  io.Rollback := (Aready && (CmtA.jump.Valid || (CmtA.branch.Valid && CmtA.branch.actTaken.asBool))) //给actTaken加了.asBool，把外面的.asBool去掉了
   val CmtBisPrint = (CmtB.inst(6, 0) === "h7b".U(7.W)).asBool
   val CmtBisHalt = (CmtB.inst(6, 0) === "h6b".U(7.W)).asBool
   val CmtBisStore = CmtB.isa.Sclass.asBool
