@@ -65,7 +65,7 @@ import chisel3.util._
 
 // ------------------ Memory 阶段模块实现 ------------------
 
-class MemoryStage extends Module {
+class Memory extends Module {
   val io = IO(new Bundle {
     val EXMEM = Input(new InstCtrlBlock)
     val FinE = Output(new InstCtrlBlock)
@@ -82,7 +82,7 @@ class MemoryStage extends Module {
   val INST = RegNext(io.EXMEM)
 
   // === 2. RAM 接口地址转换 ===
-  val Offset = "h0000000080000000".U(64.W)
+  val Offset = 0x80000000L.U(64.W)
   io.DataRam.clk := clock
   io.DataRam.en  := INST.load.Valid || (io.CmtA.Valid && io.CmtA.store.Valid)
   io.DataRam.rIdx := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
