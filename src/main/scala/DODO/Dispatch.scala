@@ -5,31 +5,29 @@ import chisel3._
 import chisel3.util._
 
 class dispatch extends Module{
-  val io = IO (new Bundle{
+  val io = IO(new Bundle {
     val in_A = Input(new InstCtrlBlock)
     val in_B = Input(new InstCtrlBlock)
-    val out_A = Input(new InstCtrlBlock)
-    val out_B = Input(new InstCtrlBlock)
-    val out_C = Input(new InstCtrlBlock)
+    val out_A = Output(new InstCtrlBlock)
+    val out_B = Output(new InstCtrlBlock)
+    val out_C = Output(new InstCtrlBlock)
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
     //在这里面需要建立两个保留站reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
     val regstate = Input(UInt(128.W))
     val enable = Output(Bool())
-    val rollback =Input(Bool())
+    val rollback = Input(Bool())
   })
-  //在成功创建好两个保留站，现在需要实例化，并且完成相应的逻辑
-  val intquene = Module (new intquene)
-  val memquene = Module (new memquene)
+  //在成功创建好两个保留站，现在需要实例化，并且成相应的逻辑
+  val intquene: intquene = Module (new intquene)
+  val memquene: memquene = Module(new memquene)
   //然后需要将指令分配到两个保留站里面
   def opcode(inst: InstCtrlBlock): UInt = inst.inst(6, 0)
-  def ismem (inst:InstCtrlBlock) :Bool = {
+  def ismem(inst: InstCtrlBlock): Bool = {
     val op = opcode(inst)
-    op === "b0000011".U || "b0100011".U //Load (LW/LH/LB/LHU/LBU)
+    op === "b0000011".U || op === "b0100011".U  // Load或Store指令
   }
-  def isint (inst:InstCtrlBlock) :Bool = {
-    Bool === !ismem(inst)
-  }
+  def isint(inst: InstCtrlBlock): Bool = !ismem(inst)
   when(isint(io.in_A)){
     intquene.io.intquene_in_A <> io.in_A
     memquene.io.memquene_in_A <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -66,18 +64,18 @@ class intquene extends Module{
     val intfull = Output(Bool())
   })
   //在这个保留站里面，我们很需要指向标还有存储站，指令标有两个，一个为入队另一个则为出队,还有堆满的信号
-  val reserve = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val reserve: Vec[InstCtrlBlock]  = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
   //首先把16个槽位的空闲状态通过genfreelist用16位01指令表示出来，然后取最低的即为进队的point，并且取2对数
-  val freelist_A = genfreelist_A()
-  val freelist_B = freelist_A - lowbit(freelist_A)
-  val in_point_A = Log2(lowbit(freelist_A))
-  val in_point_B = Log2(lowbit(freelist_B))
+  val freelist_A: UInt = genfreelist_A()
+  val freelist_B: UInt = freelist_A - lowbit(freelist_A)
+  val in_point_A: UInt = Log2(lowbit(freelist_A))
+  val in_point_B: UInt = Log2(lowbit(freelist_B))
 
   //然后出队的指针需要根据就绪状态来判定，于是通过genreadylist函数判定处于槽位中的指令的ready状态，发送ready的即可，后面可考虑加入一个年龄判定优先级
-  val readylist_A = genreadylist_A()
-  val readylist_B = readylist_A  - lowbit(readylist_A)
-  val out_point_A = Log2(lowbit(readylist_A))
-  val out_point_B = Log2(lowbit(readylist_B))
+  val readylist_A: UInt = genreadylist_A()
+  val readylist_B: UInt = readylist_A  - lowbit(readylist_A)
+  val out_point_A: UInt = Log2(lowbit(readylist_A))
+  val out_point_B: UInt = Log2(lowbit(readylist_B))
 
   def genfreelist_A(): UInt = {
     val freelist = Wire(Vec(16, UInt(1.W)))
@@ -134,24 +132,24 @@ class memquene extends Module{
     val rollback = Input(Bool())
   })
   //访存保留站同样需要有储存器 还有入队还有进队的指针,但是这个指针略有不同因为最后采用的是环形逻辑
-  val reserve = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
-  val in_point = RegInit(0.U(4.W))
-  val out_point = RegInit(0.U(4.W))
+  val reserve: Vec[InstCtrlBlock] = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val in_point: UInt = RegInit(0.U(4.W))
+  val out_point: UInt= RegInit(0.U(4.W))
 
-  when(io.rollback){
+  when(io.rollback) {
     in_point := 0.U
     out_point := 0.U
-    for(i <- 0to 15){
-      reserve(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    for(i <- 0 to 15) {
+      reserve(i) := 0.U.asTypeOf(new InstCtrlBlock())  // 清除所有条目
     }
-  }.otherwise(io.memquene_in_A.Valid && io.memquene_in_B.Valid){
+  }.elsewhen(io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_A
-    reserve(in_point + 1.U ) := io.memquene_in_B
+    reserve(in_point + 1.U) := io.memquene_in_B
     in_point := in_point + 2.U
-  }.otherwise(~io.memquene_in_A.Valid && io.memquene_in_B.Valid){
+  }.elsewhen(!io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_B
     in_point := in_point + 1.U
-  }.otherwise(io.memquene_in_A.Valid && ~io.memquene_in_B.Valid){
+  }.elsewhen(io.memquene_in_A.Valid && !io.memquene_in_B.Valid) {
     reserve(in_point) := io.memquene_in_A
     in_point := in_point + 1.U
   }
@@ -167,7 +165,9 @@ class memquene extends Module{
 }
 object lowbit {
   def apply(data: UInt): UInt = {
-    data & (~data+1.U)
+    val result = data & (-data).asTypeOf(UInt(data.getWidth.W))
+    result(data.getWidth-1, 0)
   }
 }
+
 

@@ -4,7 +4,7 @@ package DODO
 import chisel3._
 import chisel3.util._
 
-class regmap extends Module{
+class RegMap extends Module{
   val io = IO(new Bundle{
     val in_A = Input (new InstCtrlBlock)//输入信号传入
     val in_B = Input (new InstCtrlBlock)
@@ -29,115 +29,108 @@ class regmap extends Module{
     val regstate : UInt = Output (UInt(128.W))//记录了128个寄存器的空闲状态
     val regvalues : Vec[UInt]= Output (Vec(32,UInt(64.W)))
   })
-  val reg_A =RegEnable(io.in_A,io.enable)//根据使能信号生成流水线寄存器
-  val reg_B =RegEnable(io.in_B,io.enable)
-  val inst_A = Mux(io.enable, reg_A , WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  val inst_B = Mux(io.enable, reg_B, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val reg_A:InstCtrlBlock =RegEnable(io.in_A,io.enable)//根据使能信号生成流水线寄存器
+  val reg_B:InstCtrlBlock =RegEnable(io.in_B,io.enable)
+  val inst_A:InstCtrlBlock = Mux(io.enable, reg_A , WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val inst_B:InstCtrlBlock = Mux(io.enable, reg_B, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
   //首先要初始化好一些要用的记录表，并且这些模块需要提前自定义好
   //如1：重命名的映射表 就是32个架构寄存器到128个（7位宽）物理寄存器的映射关系
   //2 ：提交表记录下映射和依赖关系，用于回滚操作
   //3 ：架构寄存器的值
   //4：物理寄存器的状态表（是否处于可以分配的状态）
   //首先定义好初始的映射模块,并且定义好方法，从而可以读取和修改内部的映射关系
-  class MapBank (depth: Int, width: Int){
-    val map : Vec[UInt] = VecInit(0.U(width.W),1.U(width.W),2.U(width.W),3.U(width.W),4.U(width.W),5.U(width.W),6.U(width.W),7.U(width.W),8.U(width.W),9.U(width.W),10.U(width.W),11.U(width.W),12.U(7.W),13.U(7.W),14.U(7.W),15.U(7.W),16.U(width.W),17.U(width.W),18.U(width.W),19.U(width.W),20.U(width.W),21.U(width.W),22.U(width.W),23.U(width.W),24.U(width.W),25.U(width.W),26.U(width.W),27.U(width.W),28.U(width.W),29.U(width.W),30.U(width.W),31.U(width.W))
-    val table : Reg[Vec[UInt]]  = RegInit(map)
-    def read (num:UInt):UInt={table(num)}
-    def write (enable:Bool,num:UInt ,data :UInt):UInt ={
-      when (enable && num =/=0.U) {table(num):= data}
+  class InitIncreaseRegBank(depth: Int, width: Int) {
+    val map: Vec[UInt] = VecInit(Seq.tabulate(depth)(i => i.U(width.W)))
+    val table: Vec[UInt] = RegInit(map)
+    def read(num: UInt): UInt = table(num)
+    def write(enable: Bool, num: UInt, data: UInt): Unit = {
+      when(enable && num =/= 0.U) {
+        table(num) := data
+      }
     }
   }
-  val MapTable = new MapBank(32, 7)//MapTable完成了建立
+  val MapTable:InitIncreaseRegBank = new InitIncreaseRegBank(32, 7)//MapTable完成了建立
   //下一步是已经提交的指令的记录表，用于回滚操作,提交表和映射表是同一个结构体
   //回滚的时候可以直接往上一置换
-  val cmtable = new MapBank (32,7)
+  val cmtable:InitIncreaseRegBank = new InitIncreaseRegBank (32,7)
   //下一步定义 架构寄存器表，储存架构寄存器的值
-  class regvaluebank(depth:Int ,width:Int){
-    val table = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//这里是存储的是值
+  class AbstractRegBank(depth:Int,width:Int){
+    val table: Vec[UInt] = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//这里是存储的是值
     def read (num : UInt):UInt = {table(num)}
     def write (enable:Bool,num:UInt,data:UInt):Unit={
       when(enable && num =/=0.U){table(num):=data}
     }
   }
-  val regvalues = new regvaluebank(32,32)
+  val regvalues:AbstractRegBank = new AbstractRegBank(32,32)
   //这里不知道我们的平台是RISCV32么
   //下一步定义物理寄存器表状态,这里面应该涉及有read和唤醒
-  class regstatebank {
-    //首先定义出四个状态
+  class PhyRegStatesTable {
     // Free: 00
     // Mapped: 01
     // Executed: 10
     // retired: 11
-    //定义好复位的状态，一定是32个物理寄存器正在被使用,高的96free 低的32占用
-    val seqassign = Seq.fill(32)(3.U(2.W))
-    val seqfree = Seq.fill (96)(0.U(2.W))
-    val seqstate = seqassign ++ seqfree
-    val regstate = RegInit(VecInit(seqstate))
-    //首先要书写分配逻辑
-    val freelist = genfreelist()
-    def genfreelist():UInt ={
+    val SeqAssigned: Seq[UInt] = Seq.fill(32)(3.U(2.W))  // 低32个寄存器状态为11
+    val SeqFree: Seq[UInt] = Seq.fill(96)(0.U(2.W))      // 高96个寄存器状态为00
+    val SeqInit: Seq[UInt] = SeqAssigned ++ SeqFree      // 合并序列
+    val PhyRegStates: Vec[UInt] = RegInit(VecInit(SeqInit))
+    def genfreelist(): UInt = {
       val freelist = Wire(Vec(128, UInt(1.W)))
-      for(i <- 0to 127){
-        freelist(i) := (regstate(i) === 0.U).asUInt()
+      for(i <- 0 to 127){
+        freelist(i) := (PhyRegStates(i) === 0.U).asUInt()
       }
       freelist.asUInt
-    }//传回去128位宽的二进制码
-    val newfreelist = freelist - lowbit(freelist)
-    def freereg_A ():UInt = {Log2(lowbit(freelist))}
-    def freereg_B ():UInt = {Log2(lowbit(newfreelist))}
-
-    def avalist():UInt ={
-      val avalist = Wire (Vec(128,UInt(1.W)))
+    }
+    val freelist: UInt  = genfreelist()
+    val newfreelist: UInt  = freelist & (~lowbit(freelist)).asUInt()
+    def freereg_A(): UInt = { Log2(lowbit(freelist)) }
+    def freereg_B(): UInt = { Log2(lowbit(newfreelist))}
+    def avalist(): UInt = {
+      val avalist: Vec[UInt]  = Wire(Vec(128, UInt(1.W)))
       for(i <- 0 to 127){
-        avalist(i) := regstate(i)(1)
+        avalist(i) := PhyRegStates(i)(1)
       }
       avalist.asUInt
     }
-    def write(enable:Bool,num:Bool,data:UInt):Unit={
-      when(enable&&num=/=0.U){
-        regstate(num):= data
-      }
-    }
-    def rollback(free_num:UInt,retired_num:UInt): Unit = {
-      for(i <- 1 to 127 ){
-        when (i.U === free_num){
-          regstate(i) := 0.U
+    def write(enable: Bool, num: UInt, data: UInt): Unit = {  // 修正num类型为UInt
+      when(enable && num =/= 0.U){ PhyRegStates(num) := data
+      }}
+    def rollback(free_num: UInt, retired_num: UInt): Unit = {
+      for(i <- 1 to 127){
+        when(i.U === free_num){
+          PhyRegStates(i) := 0.U
         }.elsewhen(i.U === retired_num){
-          regstate(i) := 3.U
+          PhyRegStates(i) := 3.U
         }.otherwise{
-          when(regstate(i) === 3.U){
-            regstate(i) := 3.U
+          when(PhyRegStates(i) === 3.U){
+            PhyRegStates(i) := 3.U
           }.otherwise{
-            regstate(i) := 0.U
-          }
-        }
-      }
-    }//回滚的重置逻辑
+            PhyRegStates(i) := 0.U
+          }}}}
   }
-  val regstate = new regstatebank
+  val regstate: PhyRegStatesTable = new PhyRegStatesTable
   //基础的初始逻辑完成了
   //接下来我们需要完成功能的实现了
   //功能1 ：完成相应的物理寄存器的重命名分配
-  val regfree_A = Wire (UInt())
-  val regfree_B = Wire (UInt())
-  when (io.in_A.regdes == 0.U){
+  val regfree_A: UInt  = Wire (UInt())
+  val regfree_B: UInt  = Wire (UInt())
+  when (io.in_A.regdes =/= 0.U){
+    regfree_A := regstate.freereg_A
+  }.otherwise{
     regfree_A := 0.U
-  }.otherwise{
-    regfree_A :=regstate.freereg_A
   }
-  when (io.in_B.regdes == 0.U){
-    regfree_B := 0.U
+  when (io.in_B.regdes =/= 0.U){
+    regfree_B := regstate.freereg_B
   }.otherwise{
-    regfree_B :=regstate.freereg_B
+    regfree_B := 0.U
   }//即为进入的指令的A和B的目标寄存器分配好了对应的寄存器
   //功能2 ： 读取旧的依赖关系，处理掉WAW依赖
-  val old_depend_A = MapTable.read(io.in_A.regdes)//就是读取当前这个传入指令的目标寄存器依赖的寄存器
-  val old_depend_B = if(io.in_A.regdes == io.in_B.regdes) old_depend_A else MapTable.read(io.in_B.regdes)
+  val old_depend_A: UInt  = MapTable.read(io.in_A.regdes)//就是读取当前这个传入指令的目标寄存器依赖的寄存器
+  val old_depend_B: UInt  = if(io.in_A.regdes == io.in_B.regdes) old_depend_A else MapTable.read(io.in_B.regdes)
   //这个返回的是目前这个寄存器依赖的物理寄存器，因为指令完成之后并不能直接释放，需要等下一个物理寄存器retired之后才能释放物理寄存器
-  val regrs1_A = MapTable.read(io.in_A.regsrc1)
-  val regrs2_A = MapTable.read(io.in_A.regsrc2)
-  val regrs1_B = if(io.in_A.regdes == io.in_B.regsrc1) old_depend_A else MapTable.read(io.in_B.regsrc1)
-  val regrs2_B = if(io.in_A.regdes == io.in_B.regsrc2) old_depend_A else MapTable.read(io.in_B.regsrc2)
+  val regrs1_A: UInt  = MapTable.read(io.in_A.regsrc1)
+  val regrs2_A: UInt  = MapTable.read(io.in_A.regsrc2)
+  val regrs1_B: UInt  = if(io.in_A.regdes == io.in_B.regsrc1) old_depend_A else MapTable.read(io.in_B.regsrc1)
+  val regrs2_B: UInt  = if(io.in_A.regdes == io.in_B.regsrc2) old_depend_A else MapTable.read(io.in_B.regsrc2)
   io.regstate := regstate.avalist
   io.regvalues := regvalues.table//将架构寄存器的值传输出去
 
@@ -176,10 +169,10 @@ class regmap extends Module{
   }.otherwise{
     //不回滚的情况下，我们则需要更新新的映射关系，这里便是映射关系的书写
     //需要完成三个事情1：寄存器映射关系的更新 2：物理寄存器状态的管理 3：输出重命名之后的指令
-    when (inst_A =/= inst_B){
-      MapTable.write (inst_A.Valid,inst_A,regdes,regfree_A )
+    when (InstCtrlBlock.=/=(inst_A, inst_B)){//这里注意二者无法直接比较
+      MapTable.write (inst_A.Valid,inst_A.regdes,regfree_A )
     }
-    MapTable.write (inst_B.Valid,inst_B,regdes,regfree_B )//分配了新的物理寄存器给它，这个关系要更新
+    MapTable.write (inst_B.Valid,inst_B.regdes,regfree_B )//分配了新的物理寄存器给它，这个关系要更新
     regstate.write(regfree_A=/=0.U,regfree_A,1.U(2.W))
     regstate.write(regfree_B=/=0.U,regfree_B,1.U(2.W))//刷洗寄存器的占用状态表
 
@@ -191,10 +184,10 @@ class regmap extends Module{
     regstate.write(io.fin_E.Valid && io.fin_E.finish, io.fin_E.pregdes, 2.U(2.W))
 
     //最后重新组装新的指令数据块
-    io.out_A :=genall(regrs1_A,regrs2_A,old_depend_A,num_A,inst_A)
-    io.out_B :=genall(regrs1_B,regrs2_B,old_depend_B,num_B,inst_B)
+    io.out_A :=genall(regrs1_A,regrs2_A,old_depend_A,regfree_A,io.num_A,inst_A)
+    io.out_B :=genall(regrs1_B,regrs2_B,old_depend_B,regfree_B,io.num_B,inst_B)
   }
-  def genall (pregsrc1:UInt,pregsrc2:UInt,preggdes:UInt,cmtdes:UInt,reorderNum:UInt,inst_in:InstCtrlBlock):InstCtrlBlock = {
+  def genall (pregsrc1:UInt,pregsrc2:UInt,pregdes:UInt,cmtdes:UInt,reOrderNum:UInt,inst_in:InstCtrlBlock):InstCtrlBlock = {
     val inst_end = Wire(new InstCtrlBlock)
     inst_end.Valid :=inst_in.Valid
     inst_end.inst :=inst_in.inst
@@ -205,8 +198,8 @@ class regmap extends Module{
     inst_end.regdes := inst_in.regdes
     inst_end.regsrc1 := inst_in.regsrc1
     inst_end.regsrc2 := inst_in.regsrc2
-    inst_end.pregsrc1 := presrc1//重命名加了个映射
-    inst_end.pregsrc2 := presrc2//重命名加了个映射
+    inst_end.pregsrc1 := pregsrc1//重命名加了个映射
+    inst_end.pregsrc2 := pregsrc2//重命名加了个映射
     inst_end.pregdes := pregdes//重命名加了个映射
     inst_end.cmtdes := cmtdes//加上来依赖关系
     inst_end.src1 := inst_in.src1
@@ -219,18 +212,24 @@ class regmap extends Module{
     inst_end.store := inst_in.store
     inst_end
   }
-
   object lowbit {
     def apply(data: UInt): UInt = {
-      data & (~data + 1.U(data.getWidth.W))
+      val result = data & (-data).asUInt()
+      result(data.getWidth-1, 0)
     }
-  }//辅助函数，保留最低位的1
+  }
+  //辅助函数，保留最低位的1
   //input : 00101010110
   //output: 00100000000
   object highbit {
     def apply(data: UInt): UInt = {
-      Reverse(lowbit(Reverse(data)))
-    }
+      Reverse(lowbit(Reverse(data)))}}
+}
+object InstCtrlBlock {
+  def =/=(a: InstCtrlBlock, b: InstCtrlBlock): Bool = {
+    a.asUInt =/= b.asUInt  // 整体比较
   }
 }
-
+object RegMap {
+  type AbstractRegBank = RegMap#AbstractRegBank  // 将内部类类型别名暴露出去
+}
