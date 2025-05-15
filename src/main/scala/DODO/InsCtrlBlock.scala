@@ -144,3 +144,9 @@ class ISA extends Bundle{
     Load
   }
 }
+
+object InstCtrlBlock {
+  def =/=(a: InstCtrlBlock, b: InstCtrlBlock): Bool = {
+    a.asUInt =/= b.asUInt  // 整体比较
+  }
+}

@@ -121,4 +121,14 @@ class InstFetch extends Module {
   }
 }
 
-class RAMHelperIO
+class RAMHelperIO extends Bundle{
+  val clk = Output(Clock())//时钟
+  val en = Output(Bool())//使能
+  val rIdx = Output(UInt(64.W))//读地址索引(important)
+  val rdata = Input(UInt(64.W))//读数据(important)
+  //写端口（取指无需使用）
+  val wIdx = Output(UInt(64.W))
+  val wdata = Output(UInt(64.W))
+  val wmask = Output(UInt(64.W))
+  val wen = Output(Bool())
+}
