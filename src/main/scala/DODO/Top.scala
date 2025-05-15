@@ -8,7 +8,6 @@ class Top extends Module{
   val io = IO(new Bundle{
     val InstRam = new RAMHelperIO
     val DataRam = new RAMHelperIO
-//    val uart = new UARTIO
   })
 
   // Module
@@ -19,7 +18,7 @@ class Top extends Module{
   val Dispatch    = Module(new dispatch)
   val RegRead     = Module(new RegRead)
   val Execute     = Module(new Execute)
-  val Memory      = Module(new MemoryStage)
+  val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
 
   // pipeline
@@ -38,12 +37,16 @@ class Top extends Module{
   Execute.io.EXMEM <> Memory.io.EXMEM
 
   //BP
-  BPMachine.io.branchIO := InstDecode.io.branchIO
-  BPMachine.io.lookupPc := InstFetch.io.bpLookupPc
-  InstFetch.io.bpPredTaken := BPMachine.io.predTaken
-  InstFetch.io.bpPredTarget := BPMachine.io.predTarget
-  InstFetch.io.bpPredIndex := BPMachine.io.predIndex
-
+  BPMachine.io.branchIOA := RegRead.io.BranchIOA
+  BPMachine.io.branchIOB := RegRead.io.BranchIOB
+  BPMachine.io.branchCommitA := Commit.io.BranchCommitA
+  BPMachine.io.branchCommitB := Commit.io.BranchCommitB
+  BPMachine.io.lookupPcA := InstFetch.io.bpLookupPcA
+  BPMachine.io.lookupPcB := InstFetch.io.bpLookupPcB
+  InstFetch.io.bpPredTakenA := BPMachine.io.predTakenA
+  InstFetch.io.bpPredTargetA := BPMachine.io.predTargetA
+  InstFetch.io.bpPredTakenB := BPMachine.io.predTakenB
+  InstFetch.io.bpPredTargetB := BPMachine.io.predTargetB
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A

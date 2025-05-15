@@ -3,6 +3,8 @@ package DODO
 import chisel3._
 import chisel3.util._
 import DODO.RegMap.AbstractRegBank
+import DODO.BPU.BranchIO
+
 class RegRead extends Module{
   val io = IO(new Bundle{
     val DPRRA = Input(new InstCtrlBlock)
@@ -19,11 +21,33 @@ class RegRead extends Module{
     val FinE = Input(new InstCtrlBlock)
 
     val Rollback = Input(Bool())
+
+    val BranchIOA = Output(new BranchIO)
+    val BranchIOB = Output(new BranchIO)
   })
 
   val INSTA = RegNext(io.DPRRA)
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
+
+  // 计算index（与BP一致，GHR可由BP维护，这里用PC部分即可）
+  val indexA = INSTA.pc(9, 5) // 假设GHR_WIDTH=5
+  val indexB = INSTB.pc(9, 5)
+
+  // 在RegRead模块内，采集A、B通道的分支信息
+  io.BranchIOA.branch   := INSTA.isa.Bclass
+  io.BranchIOA.jump     := INSTA.isa.Jclass
+  io.BranchIOA.pc       := INSTA.pc
+  io.BranchIOA.taken    := INSTA.branch.proTaken
+  io.BranchIOA.target   := INSTA.branch.target
+  io.BranchIOA.index    := indexA
+
+  io.BranchIOB.branch   := INSTB.isa.Bclass
+  io.BranchIOB.jump     := INSTB.isa.Jclass
+  io.BranchIOB.pc       := INSTB.pc
+  io.BranchIOB.taken    := INSTB.branch.proTaken
+  io.BranchIOB.target   := INSTB.branch.target
+  io.BranchIOB.index    := indexB
 
   val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
