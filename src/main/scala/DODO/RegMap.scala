@@ -225,7 +225,6 @@ class RegMap extends Module{
     def apply(data: UInt): UInt = {
       Reverse(lowbit(Reverse(data)))}}
 }
-
 object RegMap {
   type AbstractRegBank = RegMap#AbstractRegBank  // 将内部类类型别名暴露出去
 }
