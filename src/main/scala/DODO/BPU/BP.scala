@@ -5,6 +5,7 @@ import Const._
 import chisel3.util.log2Ceil
 
 
+
   // Branch Information
 class BranchIO extends Bundle {
   val branch  = Bool()              // branch
