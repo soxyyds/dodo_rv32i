@@ -5,21 +5,12 @@ import chisel3._
 import chisel3.util._
 
 class dispatch extends Module{
-  val io: Bundle {
-    val in_A: InstCtrlBlock
-    val in_B: InstCtrlBlock
-    val out_A: InstCtrlBlock
-    val out_B: InstCtrlBlock
-    val out_C: InstCtrlBlock
-    val regstate: UInt
-    val enable: Bool
-    val rollback: Bool
-  } = IO(new Bundle {
+  val io = IO(new Bundle {
     val in_A = Input(new InstCtrlBlock)
     val in_B = Input(new InstCtrlBlock)
-    val out_A = Input(new InstCtrlBlock)
-    val out_B = Input(new InstCtrlBlock)
-    val out_C = Input(new InstCtrlBlock)
+    val out_A = Output(new InstCtrlBlock)
+    val out_B = Output(new InstCtrlBlock)
+    val out_C = Output(new InstCtrlBlock)
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
     //在这里面需要建立两个保留站reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号

@@ -35,37 +35,36 @@ import chisel3.util._
 //  val store = new StoreIssue
 //}
 
-class RAMHelperIO extends Bundle{
-  val clk = Output(Clock())
-  val en = Output(Bool())
-  val rIdx = Output(UInt(64.W))
-  val rdata = Input(UInt(64.W))
-  val wIdx = Output(UInt(64.W))
-  val wdata = Output(UInt(64.W))
-  val wmask = Output(UInt(64.W))
-  val wen = Output(Bool())
-}
+//class RAMHelperIO extends Bundle{
+//  val clk = Output(Clock())
+//  val en = Output(Bool())
+//  val rIdx = Output(UInt(64.W))
+//  val rdata = Input(UInt(64.W))
+//  val wIdx = Output(UInt(64.W))
+//  val wdata = Output(UInt(64.W))
+//  val wmask = Output(UInt(64.W))
+//  val wen = Output(Bool())
+//}
 // ------------------object define-----------------------
-//extention
-object SignExt{
-  def apply(data: UInt, len: Int) = {
-    val aLen = data.getWidth
-    val signBit = data(aLen-1)
-    if (aLen >= len) data(len-1,0) else Cat(Fill(len - aLen, signBit), data)
-  }
-}
-
-object ZeroExt{
-  def apply(data: UInt, len: Int) = {
-    val aLen = data.getWidth
-    if (aLen >= len) data(len-1,0) else Cat(0.U((len - aLen).W), data)
-  }
-}
-
+////extention
+//object SignExt{
+//  def apply(data: UInt, len: Int) = {
+//    val aLen = data.getWidth
+//    val signBit = data(aLen-1)
+//    if (aLen >= len) data(len-1,0) else Cat(Fill(len - aLen, signBit), data)
+//  }
+//}
+//
+//object ZeroExt{
+//  def apply(data: UInt, len: Int) = {
+//    val aLen = data.getWidth
+//    if (aLen >= len) data(len-1,0) else Cat(0.U((len - aLen).W), data)
+//  }
+//}
 
 // ------------------ Memory 阶段模块实现 ------------------
 
-class MemoryStage extends Module {
+class Memory extends Module {
   val io = IO(new Bundle {
     val EXMEM = Input(new InstCtrlBlock)
     val FinE = Output(new InstCtrlBlock)
@@ -82,7 +81,7 @@ class MemoryStage extends Module {
   val INST = RegNext(io.EXMEM)
 
   // === 2. RAM 接口地址转换 ===
-  val Offset = "h0000000080000000".U(64.W)
+  val Offset = 0x80000000L.U(64.W)
   io.DataRam.clk := clock
   io.DataRam.en  := INST.load.Valid || (io.CmtA.Valid && io.CmtA.store.Valid)
   io.DataRam.rIdx := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
