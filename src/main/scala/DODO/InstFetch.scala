@@ -35,7 +35,7 @@ class InstFetch extends Module {
   val Warmup = RegInit(0.U(3.W))
   when(Warmup === 4.U) { Warmup := 4.U }
     .otherwise { Warmup := Warmup + 1.U }
-  val ENABLE = Warmup === 4.U && ~io.FetchBlock
+  val ENABLE = Warmup === 4.U && !io.FetchBlock
 
   // ------------------ PC 更新逻辑（支持分支预测） ------------------
   val PC = RegInit("h0000000080000000".U(64.W))
