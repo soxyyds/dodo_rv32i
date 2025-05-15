@@ -2,7 +2,9 @@ package DODO
 
 import chisel3._
 import chisel3.util._
-import DODO.RegMap.AbstractRegBank
+import DODO.RegMap
+import BPU._
+
 import DODO.BPU.BranchIO
 
 class RegRead extends Module{
@@ -49,7 +51,8 @@ class RegRead extends Module{
   io.BranchIOB.target   := INSTB.branch.target
   io.BranchIOB.index    := indexB
 
-  val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
+  val regMapInstance = Module(new RegMap)
+  val PhyRegFile = regMapInstance.regvalues
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
