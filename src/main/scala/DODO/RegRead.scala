@@ -3,6 +3,9 @@ package DODO
 import chisel3._
 import chisel3.util._
 import DODO.RegMap.AbstractRegBank
+import DODO.BPU._ // 新增：导入BPU相关类型
+import DODO.BPU.Const._
+
 class RegRead extends Module{
   val io = IO(new Bundle{
     val DPRRA = Input(new InstCtrlBlock)
@@ -19,13 +22,20 @@ class RegRead extends Module{
     val FinE = Input(new InstCtrlBlock)
 
     val Rollback = Input(Bool())
+    // 新增：接收IF阶段传递的分支index
+    val bpuBranchA_index = Input(UInt(GHR_WIDTH.W))
+    val bpuBranchB_index = Input(UInt(GHR_WIDTH.W))
+    // 新增：输出到BPU的分支信息（双发射）
+    val bpuBranchA = Output(new BPU.BranchIO)
+    val bpuBranchB = Output(new BPU.BranchIO)
   })
 
   val INSTA = RegNext(io.DPRRA)
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
 
-  val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
+  // 修正AbstractRegBank实例化方式
+  val PhyRegFile = new RegMap.AbstractRegBank(32, 32)
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -79,6 +89,21 @@ class RegRead extends Module{
     io.RREXB.csr_addr  := INSTB.csr_addr // 双发射架构需同时处理B通道
     io.RREXB.csr_wdata := src3
   }
+
+  // 新增：生成A/B通道的分支信息，index由IF阶段传递
+  io.bpuBranchA.branch := INSTA.branch.Valid
+  io.bpuBranchA.jump   := INSTA.jump.Valid
+  io.bpuBranchA.taken  := INSTA.branch.actTaken
+  io.bpuBranchA.index  := io.bpuBranchA_index // 由IF阶段传递的index
+  io.bpuBranchA.pc     := INSTA.pc
+  io.bpuBranchA.target := INSTA.branch.target
+
+  io.bpuBranchB.branch := INSTB.branch.Valid
+  io.bpuBranchB.jump   := INSTB.jump.Valid
+  io.bpuBranchB.taken  := INSTB.branch.actTaken
+  io.bpuBranchB.index  := io.bpuBranchB_index // 由IF阶段传递的index
+  io.bpuBranchB.pc     := INSTB.pc
+  io.bpuBranchB.target := INSTB.branch.target
 
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
