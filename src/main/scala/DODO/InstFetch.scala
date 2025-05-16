@@ -20,14 +20,15 @@ class InstFetch extends Module {
     val InstRam = new RAMHelperIO
 
     // **------------------ 新增分支预测器接口 ------------------**
-    // 分支预测请求(当前 PC 发送给 BPU)
-    val bpLookupPcA = Output(UInt(64.W))
-    val bpLookupPcB = Output(UInt(64.W))
+    // 分支预测请求(当前 PC 发送给 BPU)当前程序计数器PC的值发送给分支预测器,请求预测该地址是否对应一条分支指令,以及预测的跳转目标。
+    val bpLookupPc = Output(UInt(64.W))
     // 分支预测结果(来自 BPU)
-    val bpPredTakenA = Input(Bool())
-    val bpPredTargetA = Input(UInt(64.W))
-    val bpPredTakenB = Input(Bool())
-    val bpPredTargetB = Input(UInt(64.W))
+    val bpPredTaken = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
+    //true.B,预测跳转,Fetch 应更新 PC 为 bpPredTarget。
+    //false.B:预测不跳转,Fetch 继续顺序执行(PC+4 或 PC+8)
+    val bpPredTarget = Input(UInt(64.W))//分支预测器返回的 预测跳转目标地址，仅在 bpPredTaken 为真时有效。
+    //若预测跳转,Fetch 将 PC 更新为此地址。
+    //通常来自 BTB 中存储的历史跳转目标。
   })
 
   // 初始化与预热逻辑(保持不变)
@@ -54,8 +55,8 @@ class InstFetch extends Module {
   }.otherwise {
     when(ENABLE) {
       // 动态分支预测：如果预测跳转，则更新 PC 为预测目标
-      when(io.bpPredTakenA) {
-        PC := io.bpPredTargetA
+      when(io.bpPredTaken) {
+        PC := io.bpPredTarget
       }.otherwise {
         // 默认顺序执行
         when(Unaligned) { PC := PC + 4.U }//未对齐+4
@@ -74,8 +75,7 @@ class InstFetch extends Module {
   io.InstRam.wen := false.B
 
   // ------------------ 分支预测器接口连接 ------------------
-  io.bpLookupPcA := PCA
-  io.bpLookupPcB := PCB
+  io.bpLookupPc := PC  // 将当前 PC 发送给 BPU 进行预测
 
   // ------------------ 指令拆分与输出逻辑（保持不变） ------------------
   val ValidA = Mux(Unaligned, ENABLE, ENABLE)
@@ -132,3 +132,4 @@ class RAMHelperIO extends Bundle{
   val wmask = Output(UInt(64.W))
   val wen = Output(Bool())
 }
+
