@@ -2,7 +2,6 @@ package DODO
 
 import chisel3._
 import chisel3.util._
-import DODO.BPU.BranchCommitIO
 
 class Commit extends Module {
   val io = IO(new Bundle {
@@ -25,30 +24,7 @@ class Commit extends Module {
 
     val FetchBlock = Output(Bool())
     val Rollback = Output(Bool())
-
-    val BranchCommitA = Output(new BranchCommitIO)
-    val BranchCommitB = Output(new BranchCommitIO)
   })
-
-  // 计算index（与BP一致，GHR可由BP维护，这里用PC部分即可）
-  val indexA = io.CmtA.pc(9, 5) // 假设GHR_WIDTH=5
-  val indexB = io.CmtB.pc(9, 5)
-
-  // Branch Information
-  io.BranchCommitA.branch   := io.CmtA.isa.Bclass
-  io.BranchCommitA.jump     := io.CmtA.isa.Jclass
-  io.BranchCommitA.pc       := io.CmtA.pc
-  io.BranchCommitA.actTaken := io.CmtA.branch.actTaken
-  io.BranchCommitA.target   := io.CmtA.branch.target
-  io.BranchCommitA.index    := indexA
-
-  io.BranchCommitB.branch   := io.CmtB.isa.Bclass
-  io.BranchCommitB.jump     := io.CmtB.isa.Jclass
-  io.BranchCommitB.pc       := io.CmtB.pc
-  io.BranchCommitB.actTaken := io.CmtB.branch.actTaken
-  io.BranchCommitB.target   := io.CmtB.branch.target
-  io.BranchCommitB.index    := indexB
-
 
   // Pointer
   val EnQueuePointer = RegInit(0.U(6.W)) //队尾
