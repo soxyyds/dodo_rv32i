@@ -38,7 +38,13 @@ class RegRead extends Module{
   val INSTC = RegNext(io.DPRRC)
 
 
-  val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
+  //这个物理寄存器定义比较特殊，因为RegMap里AbstractRegBank是RegMap类内部的类
+  //AbstractRegBank的作用是按编号读写寄存器的值
+  //但直接写PhyRegFile = new AbstractRegBank(32,32)会报错
+  //所以引用了AbstractRegBank类的实例regvalues，用于存放存储架构寄存器的值
+  val regMapInstance = Module(new RegMap)
+  val PhyRegFile = regMapInstance.regvalues
+
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
