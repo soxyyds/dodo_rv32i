@@ -8,6 +8,7 @@ class Top extends Module{
   val io = IO(new Bundle{
     val InstRam = new RAMHelperIO
     val DataRam = new RAMHelperIO
+    //    val uart = new UARTIO
   })
 
   // Module
@@ -18,7 +19,7 @@ class Top extends Module{
   val Dispatch    = Module(new dispatch)
   val RegRead     = Module(new RegRead)
   val Execute     = Module(new Execute)
-  val Memory      = Module(new Memory)
+  val Memory      = Module(new MemoryStage)
   val Commit      = Module(new Commit)
 
   // pipeline
@@ -37,16 +38,12 @@ class Top extends Module{
   Execute.io.EXMEM <> Memory.io.EXMEM
 
   //BP
-  BPMachine.io.branchIOA := RegRead.io.BranchIOA
-  BPMachine.io.branchIOB := RegRead.io.BranchIOB
-  BPMachine.io.branchCommitA := Commit.io.BranchCommitA
-  BPMachine.io.branchCommitB := Commit.io.BranchCommitB
-  BPMachine.io.lookupPcA := InstFetch.io.bpLookupPcA
-  BPMachine.io.lookupPcB := InstFetch.io.bpLookupPcB
-  InstFetch.io.bpPredTakenA := BPMachine.io.predTakenA
-  InstFetch.io.bpPredTargetA := BPMachine.io.predTargetA
-  InstFetch.io.bpPredTakenB := BPMachine.io.predTakenB
-  InstFetch.io.bpPredTargetB := BPMachine.io.predTargetB
+  BPMachine.io.branchIO := InstDecode.io.branchIO
+  BPMachine.io.lookupPc := InstFetch.io.bpLookupPc
+  InstFetch.io.bpPredTaken := BPMachine.io.predTaken
+  InstFetch.io.bpPredTarget := BPMachine.io.predTarget
+  InstFetch.io.bpPredIndex := BPMachine.io.predIndex
+
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A
@@ -118,98 +115,98 @@ class Top extends Module{
   }
 
   // difftest
-//  val CmtA = Commit.io.CmtA
-//  val CmtB = Commit.io.CmtB
-//  val isPrint = CmtA.inst(6,0) === "h7b".U(7.W)
-//  val isHalt = CmtA.inst(6,0) === "h6b".U(7.W)
-//  val cycleCnt = RegInit(0.U(64.W))
-//  val instrCnt = RegInit(0.U(64.W))
-//
-//  val Aready = CmtA.Valid && CmtA.finish
-//  val Bready = CmtB.Valid && CmtB.finish
-//  cycleCnt := cycleCnt + 1.U
-//  instrCnt := instrCnt + Aready.asUInt + Bready.asUInt
-//
-//  val InstrCommitA = Module(new DifftestInstrCommit)
-//  val InstrCommitB = Module(new DifftestInstrCommit)
-//  val ArchIntRegState = Module(new DifftestArchIntRegState)
-//  val CSRState = Module(new DifftestCSRState)
-//  val TrapEvent = Module(new DifftestTrapEvent)
-//  val ArchFpRegState = Module(new DifftestArchFpRegState)
-//  val ArchEvent = Module(new DifftestArchEvent)
-//
-//  InstrCommitA.io.clock := clock
-//  InstrCommitA.io.coreid := 0.U
-//  InstrCommitA.io.index := 0.U
-//  InstrCommitA.io.valid := RegNext(Aready)
-//  InstrCommitA.io.pc := RegNext(CmtA.pc)
-//  InstrCommitA.io.instr := RegNext(CmtA.inst)
-//  InstrCommitA.io.skip := RegNext(isPrint)
-//  InstrCommitA.io.isRVC := false.B
-//  InstrCommitA.io.scFailed := false.B
-//  InstrCommitA.io.wen := RegNext(CmtA.pregdes===0.U)
-//  InstrCommitA.io.wdata := RegNext(CmtA.wbdata)
-//  InstrCommitA.io.wdest := RegNext(CmtA.pregdes)
-//  InstrCommitA.io.special := 0.U
-//
-//  InstrCommitB.io.clock := clock
-//  InstrCommitB.io.coreid := 0.U
-//  InstrCommitB.io.index := 1.U
-//  InstrCommitB.io.valid := RegNext(Bready)
-//  InstrCommitB.io.pc := RegNext(CmtB.pc)
-//  InstrCommitB.io.instr := RegNext(CmtB.inst)
-//  InstrCommitB.io.skip := false.B
-//  InstrCommitB.io.isRVC := false.B
-//  InstrCommitB.io.scFailed := false.B
-//  InstrCommitB.io.wen := RegNext(CmtB.pregdes===0.U)
-//  InstrCommitB.io.wdata := RegNext(CmtB.wbdata)
-//  InstrCommitB.io.wdest := RegNext(CmtB.pregdes)
-//  InstrCommitB.io.special := 0.U
-//
-//  TrapEvent.io.clock := clock
-//  TrapEvent.io.coreid := 0.U
-//  TrapEvent.io.valid := RegNext(isHalt)
-//  TrapEvent.io.code := RegMap.io.ArchRegValues(10)(7,0)
-//  TrapEvent.io.pc := RegNext(CmtA.pc)
-//  TrapEvent.io.cycleCnt := cycleCnt
-//  TrapEvent.io.instrCnt := instrCnt
-//
-//  io.uart.in.valid := false.B
-//  io.uart.out.valid := isPrint
-//  io.uart.out.ch := RegMap.io.ArchRegValues(10)
-//
-//  CSRState.io.clock := clock
-//  CSRState.io.coreid := 0.U
-//  CSRState.io.mstatus := 0.U
-//  CSRState.io.mcause := 0.U
-//  CSRState.io.mepc := 0.U
-//  CSRState.io.sstatus := 0.U
-//  CSRState.io.scause := 0.U
-//  CSRState.io.sepc := 0.U
-//  CSRState.io.satp := 0.U
-//  CSRState.io.mip := 0.U
-//  CSRState.io.mie := 0.U
-//  CSRState.io.mscratch := 0.U
-//  CSRState.io.sscratch := 0.U
-//  CSRState.io.mideleg := 0.U
-//  CSRState.io.medeleg := 0.U
-//  CSRState.io.mtval := 0.U
-//  CSRState.io.stval := 0.U
-//  CSRState.io.mtvec := 0.U
-//  CSRState.io.stvec := 0.U
-//  CSRState.io.priviledgeMode := 3.U
-//
-//  ArchEvent.io.clock := clock
-//  ArchEvent.io.coreid := 0.U
-//  ArchEvent.io.intrNO := 0.U
-//  ArchEvent.io.cause := 0.U
-//  ArchEvent.io.exceptionPC := 0.U
-//  ArchEvent.io.exceptionInst := 0.U
-//
-//  ArchIntRegState.io.clock := clock
-//  ArchIntRegState.io.coreid := 0.U
-//  ArchIntRegState.io.gpr := RegMap.io.ArchRegValues
-//  ArchFpRegState.io.clock := clock
-//  ArchFpRegState.io.coreid := 0.U
-//  ArchFpRegState.io.fpr := RegInit(VecInit(Seq.fill(32)(0.U(64.W))))
+  //  val CmtA = Commit.io.CmtA
+  //  val CmtB = Commit.io.CmtB
+  //  val isPrint = CmtA.inst(6,0) === "h7b".U(7.W)
+  //  val isHalt = CmtA.inst(6,0) === "h6b".U(7.W)
+  //  val cycleCnt = RegInit(0.U(64.W))
+  //  val instrCnt = RegInit(0.U(64.W))
+  //
+  //  val Aready = CmtA.Valid && CmtA.finish
+  //  val Bready = CmtB.Valid && CmtB.finish
+  //  cycleCnt := cycleCnt + 1.U
+  //  instrCnt := instrCnt + Aready.asUInt + Bready.asUInt
+  //
+  //  val InstrCommitA = Module(new DifftestInstrCommit)
+  //  val InstrCommitB = Module(new DifftestInstrCommit)
+  //  val ArchIntRegState = Module(new DifftestArchIntRegState)
+  //  val CSRState = Module(new DifftestCSRState)
+  //  val TrapEvent = Module(new DifftestTrapEvent)
+  //  val ArchFpRegState = Module(new DifftestArchFpRegState)
+  //  val ArchEvent = Module(new DifftestArchEvent)
+  //
+  //  InstrCommitA.io.clock := clock
+  //  InstrCommitA.io.coreid := 0.U
+  //  InstrCommitA.io.index := 0.U
+  //  InstrCommitA.io.valid := RegNext(Aready)
+  //  InstrCommitA.io.pc := RegNext(CmtA.pc)
+  //  InstrCommitA.io.instr := RegNext(CmtA.inst)
+  //  InstrCommitA.io.skip := RegNext(isPrint)
+  //  InstrCommitA.io.isRVC := false.B
+  //  InstrCommitA.io.scFailed := false.B
+  //  InstrCommitA.io.wen := RegNext(CmtA.pregdes===0.U)
+  //  InstrCommitA.io.wdata := RegNext(CmtA.wbdata)
+  //  InstrCommitA.io.wdest := RegNext(CmtA.pregdes)
+  //  InstrCommitA.io.special := 0.U
+  //
+  //  InstrCommitB.io.clock := clock
+  //  InstrCommitB.io.coreid := 0.U
+  //  InstrCommitB.io.index := 1.U
+  //  InstrCommitB.io.valid := RegNext(Bready)
+  //  InstrCommitB.io.pc := RegNext(CmtB.pc)
+  //  InstrCommitB.io.instr := RegNext(CmtB.inst)
+  //  InstrCommitB.io.skip := false.B
+  //  InstrCommitB.io.isRVC := false.B
+  //  InstrCommitB.io.scFailed := false.B
+  //  InstrCommitB.io.wen := RegNext(CmtB.pregdes===0.U)
+  //  InstrCommitB.io.wdata := RegNext(CmtB.wbdata)
+  //  InstrCommitB.io.wdest := RegNext(CmtB.pregdes)
+  //  InstrCommitB.io.special := 0.U
+  //
+  //  TrapEvent.io.clock := clock
+  //  TrapEvent.io.coreid := 0.U
+  //  TrapEvent.io.valid := RegNext(isHalt)
+  //  TrapEvent.io.code := RegMap.io.ArchRegValues(10)(7,0)
+  //  TrapEvent.io.pc := RegNext(CmtA.pc)
+  //  TrapEvent.io.cycleCnt := cycleCnt
+  //  TrapEvent.io.instrCnt := instrCnt
+  //
+  //  io.uart.in.valid := false.B
+  //  io.uart.out.valid := isPrint
+  //  io.uart.out.ch := RegMap.io.ArchRegValues(10)
+  //
+  //  CSRState.io.clock := clock
+  //  CSRState.io.coreid := 0.U
+  //  CSRState.io.mstatus := 0.U
+  //  CSRState.io.mcause := 0.U
+  //  CSRState.io.mepc := 0.U
+  //  CSRState.io.sstatus := 0.U
+  //  CSRState.io.scause := 0.U
+  //  CSRState.io.sepc := 0.U
+  //  CSRState.io.satp := 0.U
+  //  CSRState.io.mip := 0.U
+  //  CSRState.io.mie := 0.U
+  //  CSRState.io.mscratch := 0.U
+  //  CSRState.io.sscratch := 0.U
+  //  CSRState.io.mideleg := 0.U
+  //  CSRState.io.medeleg := 0.U
+  //  CSRState.io.mtval := 0.U
+  //  CSRState.io.stval := 0.U
+  //  CSRState.io.mtvec := 0.U
+  //  CSRState.io.stvec := 0.U
+  //  CSRState.io.priviledgeMode := 3.U
+  //
+  //  ArchEvent.io.clock := clock
+  //  ArchEvent.io.coreid := 0.U
+  //  ArchEvent.io.intrNO := 0.U
+  //  ArchEvent.io.cause := 0.U
+  //  ArchEvent.io.exceptionPC := 0.U
+  //  ArchEvent.io.exceptionInst := 0.U
+  //
+  //  ArchIntRegState.io.clock := clock
+  //  ArchIntRegState.io.coreid := 0.U
+  //  ArchIntRegState.io.gpr := RegMap.io.ArchRegValues
+  //  ArchFpRegState.io.clock := clock
+  //  ArchFpRegState.io.coreid := 0.U
+  //  ArchFpRegState.io.fpr := RegInit(VecInit(Seq.fill(32)(0.U(64.W))))
 }

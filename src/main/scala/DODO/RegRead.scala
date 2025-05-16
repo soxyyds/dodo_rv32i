@@ -30,9 +30,6 @@ class RegRead extends Module{
     val FinE = Input(new InstCtrlBlock)
 
     val Rollback = Input(Bool())
-
-    val BranchIOA = Output(new BranchIO)
-    val BranchIOB = Output(new BranchIO)
   })
 
   //将指令存入寄存器，形成流水线寄存器
@@ -40,33 +37,8 @@ class RegRead extends Module{
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
 
-  // 计算index（与BP一致，GHR可由BP维护，这里用PC部分即可）
-  val indexA = INSTA.pc(9, 5) // 假设GHR_WIDTH=5
-  val indexB = INSTB.pc(9, 5)
 
-  // 在RegRead模块内，采集A、B通道的分支信息
-  io.BranchIOA.branch   := INSTA.isa.Bclass
-  io.BranchIOA.jump     := INSTA.isa.Jclass
-  io.BranchIOA.pc       := INSTA.pc
-  io.BranchIOA.taken    := INSTA.branch.proTaken
-  io.BranchIOA.target   := INSTA.branch.target
-  io.BranchIOA.index    := indexA
-
-  io.BranchIOB.branch   := INSTB.isa.Bclass
-  io.BranchIOB.jump     := INSTB.isa.Jclass
-  io.BranchIOB.pc       := INSTB.pc
-  io.BranchIOB.taken    := INSTB.branch.proTaken
-  io.BranchIOB.target   := INSTB.branch.target
-  io.BranchIOB.index    := indexB
-
-  //这个物理寄存器定义比较特殊，因为RegMap里AbstractRegBank是RegMap类内部的类
-  //AbstractRegBank的作用是按编号读写寄存器的值
-  //但直接写PhyRegFile = new AbstractRegBank(32,32)会报错
-  //所以引用了AbstractRegBank类的实例regvalues，用于存放存储架构寄存器的值
-  val regMapInstance = Module(new RegMap)
-  val PhyRegFile = regMapInstance.regvalues
-
-  //根据重命名之后的源寄存器编号读取相应数值
+  val PhyRegFile:AbstractRegBank = new AbstractRegBank(32,32)
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -74,7 +46,6 @@ class RegRead extends Module{
   val src5 = PhyRegFile.read(INSTC.pregsrc1)
   val src6 = PhyRegFile.read(INSTC.pregsrc2)
 
-  //将写回的数据放入寄存器
   PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
   PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
   PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, io.FinC.wbdata)
@@ -147,7 +118,7 @@ class RegRead extends Module{
     ICB.branch := DPRR.branch
     ICB.load := DPRR.load
     ICB.store := DPRR.store
-    ICB.csr_addr := DPRR.csr_addr  
+    ICB.csr_addr := DPRR.csr_addr
     ICB    //返回值，将生成的指令信息返回给调用者
   }
 
