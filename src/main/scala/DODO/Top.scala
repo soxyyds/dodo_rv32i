@@ -12,7 +12,6 @@ class Top extends Module{
   })
 
   // Module
-  val BPMachine   = Module(new BP)
   val InstFetch   = Module(new InstFetch)
   val InstDecode  = Module(new InstDecode)
   val RegMap      = Module(new RegMap)
@@ -21,6 +20,9 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
+  val bpA         = Module(new BP)
+  val bpB         = Module(new BP)
+
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
   InstFetch.io.IFIDB <> InstDecode.io.IFIDB
@@ -38,10 +40,24 @@ class Top extends Module{
 
   // 分支预测相关信号连接（双发射闭环）
   // InstFetch <-> RegRead
-  RegRead.io.bpuBranchAIdx := InstFetch.io.bpuBranchA_index
-  RegRead.io.bpuBranchBIdx := InstFetch.io.bpuBranchB_index
-  InstFetch.io.bpuBranchA := RegRead.io.bpuBranchA
-  InstFetch.io.bpuBranchB := RegRead.io.bpuBranchB
+  InstFetch.io.bpPredTakenA := bpA.io.predTaken
+  InstFetch.io.bpPredTargetA := bpA.io.predTarget
+  InstFetch.io.bpPredTakenB := bpB.io.predTaken
+  InstFetch.io.bpPredTargetB := bpB.io.predTarget
+  bpA.io.lookupPc := InstFetch.io.bpuPCA
+  bpB.io.lookupPc := InstFetch.io.bpuPCB
+
+  // Index传递
+  InstFetch.io.BPIFBranchAIdx := bpA.io.predIndex
+  InstFetch.io.BPIFBranchBIdx := bpB.io.predIndex
+  RegRead.io.bpuBranchAIdx := InstFetch.io.IFRRBranchAIdx
+  RegRead.io.bpuBranchBIdx := InstFetch.io.IFRRBranchBIdx
+
+  // RegRead阶段反馈的通道分支信息
+  InstFetch.io.RRIFBranchAInfo <> RegRead.io.bpuBranchA
+  InstFetch.io.RRIFBranchBInfo <> RegRead.io.bpuBranchB
+  bpA.io.branchIO <> InstFetch.io.IFBPBranchAInfo
+  bpB.io.branchIO <> InstFetch.io.IFBPBranchBInfo
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A
@@ -135,6 +151,6 @@ class TopWithMemory extends Module {
   memory.io.ex_mem.func3 := cpu.io.DataRam.func3
   //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
   //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
-  memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
+  //memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
 
 }
