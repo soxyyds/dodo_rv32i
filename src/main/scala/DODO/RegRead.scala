@@ -43,13 +43,7 @@ class RegRead extends Module{
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
 
-
-  //这个物理寄存器定义比较特殊，因为RegMap里AbstractRegBank是RegMap类内部的类
-  //AbstractRegBank的作用是按编号读写寄存器的值
-  //但直接写PhyRegFile = new AbstractRegBank(32,32)会报错
-  //所以引用了AbstractRegBank类的实例regvalues，用于存放存储架构寄存器的值
-  val regMapInstance = Module(new RegMap)
-  val PhyRegFile = regMapInstance.regvalues
+  val PhyRegFile = new AbstractRegBank(32,32)
 
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
@@ -58,11 +52,19 @@ class RegRead extends Module{
   val src5 = PhyRegFile.read(INSTC.pregsrc1)
   val src6 = PhyRegFile.read(INSTC.pregsrc2)
 
-  PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
-  PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
-  PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, io.FinC.wbdata)
-  PhyRegFile.write(io.FinD.Valid && io.FinD.finish, io.FinD.pregdes, io.FinD.wbdata)
-  PhyRegFile.write(io.FinE.Valid && io.FinE.finish, io.FinE.pregdes, io.FinE.wbdata)
+  // 在 RegRead 模块中，添加中间寄存器
+  val FinA_wbdata_reg = RegNext(io.FinA.wbdata)
+  val FinB_wbdata_reg = RegNext(io.FinB.wbdata)
+  val FinC_wbdata_reg = RegNext(io.FinC.wbdata)
+  val FinD_wbdata_reg = RegNext(io.FinD.wbdata)
+  val FinE_wbdata_reg = RegNext(io.FinE.wbdata)
+
+  // 调用 write 方法时，使用中间寄存器
+  PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, Mux(io.FinA.Valid, FinA_wbdata_reg, 0.U))
+  PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, Mux(io.FinB.Valid, FinB_wbdata_reg, 0.U))
+  PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, Mux(io.FinC.Valid, FinC_wbdata_reg, 0.U))
+  PhyRegFile.write(io.FinD.Valid && io.FinD.finish, io.FinD.pregdes, Mux(io.FinD.Valid, FinD_wbdata_reg, 0.U))
+  PhyRegFile.write(io.FinE.Valid && io.FinE.finish, io.FinE.pregdes, Mux(io.FinE.Valid, FinE_wbdata_reg, 0.U))
 
   val BJU1 = Module(new BranchJumpUnit)
   BJU1.io.isa <> INSTA.isa
@@ -87,6 +89,11 @@ class RegRead extends Module{
   val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass || InstAisHalt || InstAisPrint
   val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass || InstBisHalt || InstBisPrint
 
+  io.RREXA.csr_wdata := 0.U
+  io.RREXB.csr_wdata := 0.U
+  io.RREXC.csr_wdata := 0.U
+  io.FinA.csr_wdata  := 0.U
+  io.FinB.csr_wdata  := 0.U
   when(io.Rollback){
     //如果发生回滚，将输出的指令控制块清零
     io.RREXA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -103,7 +110,7 @@ class RegRead extends Module{
     io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
     io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
     // csr_addr的传递在上述RREX的赋值中已经包含
-    io.RREXA.csr_wdata := src1          // 源寄存器1作为csr写数据
+    io.RREXA.csr_wdata := src1
     io.RREXB.csr_wdata := src3
   }
 
@@ -148,6 +155,7 @@ class RegRead extends Module{
     ICB.load := DPRR.load
     ICB.store := DPRR.store
     ICB.csr_addr := DPRR.csr_addr
+    ICB.csr_wdata := src1
     ICB    //返回值，将生成的指令信息返回给调用者
   }
 
@@ -176,6 +184,7 @@ class RegRead extends Module{
     ICB.load := RREX.load
     ICB.store := RREX.store
     ICB.csr_addr := RREX.csr_addr
+    ICB.csr_wdata := 0.U
     ICB
   }
 }
