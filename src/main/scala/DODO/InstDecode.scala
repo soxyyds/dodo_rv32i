@@ -1,9 +1,7 @@
 package DODO
 
-import DODO.BPU.Const.ADDR_WIDTH
 import chisel3._
 import chisel3.util._
-import DODO.BPU._ //导入分支预测器相关模块
 
 class InstDecode extends Module {
   val io = IO(new Bundle{
@@ -14,15 +12,6 @@ class InstDecode extends Module {
 
     val FetchBlock = Input(Bool())       // 取指阻塞信号
     val Rollback = Input(Bool())         // 流水线回滚信号
-
-    // 新增的BP接口
-    val branchInfo = new Bundle {
-      val target = Output(UInt(ADDR_WIDTH.W))  // 从ID中取出指令的目标地址
-      val branch = Output(Bool())              // 该指令是否为分支指令
-      val jump = Output(Bool())                // 该指令是否为跳转指令
-      val pc = Output(UInt(ADDR_WIDTH.W))      // 当前指令的pc值，用于更新BTB中的信息
-    }
-    val lookupPc = Output(UInt(ADDR_WIDTH.W))  // 想要查询的pc值，用于提前分支预测
   })
 
   // 流水线寄存器
@@ -44,27 +33,12 @@ class InstDecode extends Module {
   decodeA.io.inst := INSTA.inst
   decodeB.io.inst := INSTB.inst
 
-  // BP接口连接
-  io.branchInfo.target := INSTA.pc + decodeA.io.imm.J  // 目标地址计算
-  io.branchInfo.branch := decodeA.io.isa.Bclass()      // 是否为分支指令
-  io.branchInfo.jump := decodeA.io.isa.Jclass()        // 是否为跳转指令
-  io.branchInfo.pc := INSTA.pc                         // 当前指令PC
-
-  io.lookupPc := INSTA.pc  // 查询PC使用当前指令PC
-
   // 流水线控制
   when(io.Rollback) {
     RegA := 0.U.asTypeOf(new InstCtrlBlock)
     RegB := 0.U.asTypeOf(new InstCtrlBlock)
     io.IDRMA := 0.U.asTypeOf(new InstCtrlBlock)
     io.IDRMB := 0.U.asTypeOf(new InstCtrlBlock)
-
-    // Rollback时清除BP信号
-    io.branchInfo.target := 0.U
-    io.branchInfo.branch := false.B
-    io.branchInfo.jump := false.B
-    io.branchInfo.pc := 0.U
-    io.lookupPc := 0.U
   }.otherwise {
     io.IDRMA := GenICB(
       decodeA.io.isa, decodeA.io.imm,
@@ -95,7 +69,7 @@ class InstDecode extends Module {
 
 
 class Decoder extends Module {
-    val io = IO(new Bundle{
+  val io = IO(new Bundle{
     val inst = Input(UInt(32.W))     // 32位指令输入
     val isa = Output(new ISA)        // 指令类型
     val imm = Output(new IMM)        // 立即数
@@ -188,12 +162,13 @@ class Decoder extends Module {
       io.isa.SLL || io.isa.SRL ||
       io.isa.AND || io.isa.OR ||
       io.isa.SLT || io.isa.SLTU)) ||
-      io.isa.Bclass() ||
-      io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
-      io.regdes := Mux(wen, io.inst(11,7), 0.U)
-      io.regsrc1 := Mux(src1, io.inst(19,15), 0.U)
-      io.regsrc2 := Mux(src2, io.inst(24,20), 0.U)
+    io.isa.Bclass() ||
+    io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
+  io.regdes := Mux(wen, io.inst(11,7), 0.U)
+  io.regsrc1 := Mux(src1, io.inst(19,15), 0.U)
+  io.regsrc2 := Mux(src2, io.inst(24,20), 0.U)
 }
+
 
 object SignExt {
   def apply(a: UInt, len: Int) = {
