@@ -6,8 +6,9 @@ import BPU._
 
 class Top extends Module{
   val io = IO(new Bundle{
-    val InstRam = new RAMHelperIO
-    val DataRam = new RAMHelperIO
+    val InstRam = new RAMHelperIO_2
+    val DataRam = new RAMHelperIO_2
+    //    val uart = new UARTIO
   })
 
   // Module
@@ -20,7 +21,6 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
-
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
   InstFetch.io.IFIDB <> InstDecode.io.IFIDB
@@ -36,17 +36,12 @@ class Top extends Module{
   RegRead.io.RREXC <> Execute.io.RREXC
   Execute.io.EXMEM <> Memory.io.EXMEM
 
-  //BP
-  BPMachine.io.branchIOA := RegRead.io.BranchIOA
-  BPMachine.io.branchIOB := RegRead.io.BranchIOB
-  BPMachine.io.branchCommitA := Commit.io.BranchCommitA
-  BPMachine.io.branchCommitB := Commit.io.BranchCommitB
-  BPMachine.io.lookupPcA := InstFetch.io.bpLookupPcA
-  BPMachine.io.lookupPcB := InstFetch.io.bpLookupPcB
-  InstFetch.io.bpPredTakenA := BPMachine.io.predTakenA
-  InstFetch.io.bpPredTargetA := BPMachine.io.predTargetA
-  InstFetch.io.bpPredTakenB := BPMachine.io.predTakenB
-  InstFetch.io.bpPredTargetB := BPMachine.io.predTargetB
+  // 分支预测相关信号连接（双发射闭环）
+  // InstFetch <-> RegRead
+  RegRead.io.bpuBranchAIdx := InstFetch.io.bpuBranchA_index
+  RegRead.io.bpuBranchBIdx := InstFetch.io.bpuBranchB_index
+  InstFetch.io.bpuBranchA := RegRead.io.bpuBranchA
+  InstFetch.io.bpuBranchB := RegRead.io.bpuBranchB
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A
@@ -116,100 +111,30 @@ class Top extends Module{
       mcycle := Commit.io.CmtB.wbdata
     }
   }
+}
 
-  // difftest
-//  val CmtA = Commit.io.CmtA
-//  val CmtB = Commit.io.CmtB
-//  val isPrint = CmtA.inst(6,0) === "h7b".U(7.W)
-//  val isHalt = CmtA.inst(6,0) === "h6b".U(7.W)
-//  val cycleCnt = RegInit(0.U(64.W))
-//  val instrCnt = RegInit(0.U(64.W))
-//
-//  val Aready = CmtA.Valid && CmtA.finish
-//  val Bready = CmtB.Valid && CmtB.finish
-//  cycleCnt := cycleCnt + 1.U
-//  instrCnt := instrCnt + Aready.asUInt + Bready.asUInt
-//
-//  val InstrCommitA = Module(new DifftestInstrCommit)
-//  val InstrCommitB = Module(new DifftestInstrCommit)
-//  val ArchIntRegState = Module(new DifftestArchIntRegState)
-//  val CSRState = Module(new DifftestCSRState)
-//  val TrapEvent = Module(new DifftestTrapEvent)
-//  val ArchFpRegState = Module(new DifftestArchFpRegState)
-//  val ArchEvent = Module(new DifftestArchEvent)
-//
-//  InstrCommitA.io.clock := clock
-//  InstrCommitA.io.coreid := 0.U
-//  InstrCommitA.io.index := 0.U
-//  InstrCommitA.io.valid := RegNext(Aready)
-//  InstrCommitA.io.pc := RegNext(CmtA.pc)
-//  InstrCommitA.io.instr := RegNext(CmtA.inst)
-//  InstrCommitA.io.skip := RegNext(isPrint)
-//  InstrCommitA.io.isRVC := false.B
-//  InstrCommitA.io.scFailed := false.B
-//  InstrCommitA.io.wen := RegNext(CmtA.pregdes===0.U)
-//  InstrCommitA.io.wdata := RegNext(CmtA.wbdata)
-//  InstrCommitA.io.wdest := RegNext(CmtA.pregdes)
-//  InstrCommitA.io.special := 0.U
-//
-//  InstrCommitB.io.clock := clock
-//  InstrCommitB.io.coreid := 0.U
-//  InstrCommitB.io.index := 1.U
-//  InstrCommitB.io.valid := RegNext(Bready)
-//  InstrCommitB.io.pc := RegNext(CmtB.pc)
-//  InstrCommitB.io.instr := RegNext(CmtB.inst)
-//  InstrCommitB.io.skip := false.B
-//  InstrCommitB.io.isRVC := false.B
-//  InstrCommitB.io.scFailed := false.B
-//  InstrCommitB.io.wen := RegNext(CmtB.pregdes===0.U)
-//  InstrCommitB.io.wdata := RegNext(CmtB.wbdata)
-//  InstrCommitB.io.wdest := RegNext(CmtB.pregdes)
-//  InstrCommitB.io.special := 0.U
-//
-//  TrapEvent.io.clock := clock
-//  TrapEvent.io.coreid := 0.U
-//  TrapEvent.io.valid := RegNext(isHalt)
-//  TrapEvent.io.code := RegMap.io.ArchRegValues(10)(7,0)
-//  TrapEvent.io.pc := RegNext(CmtA.pc)
-//  TrapEvent.io.cycleCnt := cycleCnt
-//  TrapEvent.io.instrCnt := instrCnt
-//
-//  io.uart.in.valid := false.B
-//  io.uart.out.valid := isPrint
-//  io.uart.out.ch := RegMap.io.ArchRegValues(10)
-//
-//  CSRState.io.clock := clock
-//  CSRState.io.coreid := 0.U
-//  CSRState.io.mstatus := 0.U
-//  CSRState.io.mcause := 0.U
-//  CSRState.io.mepc := 0.U
-//  CSRState.io.sstatus := 0.U
-//  CSRState.io.scause := 0.U
-//  CSRState.io.sepc := 0.U
-//  CSRState.io.satp := 0.U
-//  CSRState.io.mip := 0.U
-//  CSRState.io.mie := 0.U
-//  CSRState.io.mscratch := 0.U
-//  CSRState.io.sscratch := 0.U
-//  CSRState.io.mideleg := 0.U
-//  CSRState.io.medeleg := 0.U
-//  CSRState.io.mtval := 0.U
-//  CSRState.io.stval := 0.U
-//  CSRState.io.mtvec := 0.U
-//  CSRState.io.stvec := 0.U
-//  CSRState.io.priviledgeMode := 3.U
-//
-//  ArchEvent.io.clock := clock
-//  ArchEvent.io.coreid := 0.U
-//  ArchEvent.io.intrNO := 0.U
-//  ArchEvent.io.cause := 0.U
-//  ArchEvent.io.exceptionPC := 0.U
-//  ArchEvent.io.exceptionInst := 0.U
-//
-//  ArchIntRegState.io.clock := clock
-//  ArchIntRegState.io.coreid := 0.U
-//  ArchIntRegState.io.gpr := RegMap.io.ArchRegValues
-//  ArchFpRegState.io.clock := clock
-//  ArchFpRegState.io.coreid := 0.U
-//  ArchFpRegState.io.fpr := RegInit(VecInit(Seq.fill(32)(0.U(64.W))))
+class TopWithMemory extends Module {
+  val io = IO(new Bundle {
+    // 可以保留原有的外部接口，或者根据需要调整
+  })
+  val cpu = Module(new Top)//实例化CPU，然后把内存和CPU连接在一起
+  val memory = Module(new mem(memDepth = 1024, instWidth = 2))//这时候已经制定了每次取两条
+
+  //我们应该用的架构是哈佛架构 就是访存和取指是两条通路
+  //取指块最重要的是把指令拿回来
+  cpu.io.InstRam.inst_en := !reset.asBool //决定了是否要运行
+  memory.io.if_mem.instAddr := cpu.io.InstRam.inst_address//传入了检索的地址
+  cpu.io.InstRam.inst_data := memory.io.mem_id.inst
+
+  //下面是访存块
+  memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen//写入的控制信号
+  memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
+  memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata//这个传进去的是地址和数据
+  //然后是读的部分
+  cpu.io.DataRam.data_rdata := memory.io.mem_lsu.data
+  memory.io.ex_mem.func3 := cpu.io.DataRam.func3
+  //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
+  //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
+  memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
+
 }

@@ -45,7 +45,7 @@ class RegMap extends Module{
     def read(num: UInt): UInt = table(num)
     def write(enable: Bool, num: UInt, data: UInt): Unit = {
       when(enable && num =/= 0.U) {
-        table(num) := data
+        table(num) := Mux(enable, data, table(num)) // 使用 Mux 确保信号合法
       }
     }
   }
@@ -54,15 +54,8 @@ class RegMap extends Module{
   //回滚的时候可以直接往上一置换
   val cmtable:InitIncreaseRegBank = new InitIncreaseRegBank (32,7)
   //下一步定义 架构寄存器表，储存架构寄存器的值
-  class AbstractRegBank(depth:Int,width:Int){
-    val table: Vec[UInt] = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//这里是存储的是值
-    def read (num : UInt):UInt = {table(num)}
-    def write (enable:Bool,num:UInt,data:UInt):Unit={
-      when(enable && num =/=0.U){table(num):=data}
-    }
-  }
+
   val regvalues:AbstractRegBank = new AbstractRegBank(32,32)
-  //这里不知道我们的平台是RISCV32么
   //下一步定义物理寄存器表状态,这里面应该涉及有read和唤醒
   class PhyRegStatesTable {
     // Free: 00
@@ -154,7 +147,8 @@ class RegMap extends Module{
   when(io.rollback){
     //首先把所有的寄存器的映射换成已经提交的映射
     for(i <- 0 to 31){
-      MapTable.table(i) := cmtable.table(i)
+      val tmp = WireDefault(cmtable.table(i))
+      MapTable.table(i) := tmp
     }//但是有个问题就是回滚的时候 同时提交了A和B两个指令，而AB刷新这个cmtable和回滚的when是并行的，所以需要保护这两个
     when(io.cmt_A.Valid && io.cmt_A.regdes =/= 0.U) {
       MapTable.table(io.cmt_A.regdes) := io.cmt_A.pregdes
@@ -225,6 +219,11 @@ class RegMap extends Module{
     def apply(data: UInt): UInt = {
       Reverse(lowbit(Reverse(data)))}}
 }
-object RegMap {
-  type AbstractRegBank = RegMap#AbstractRegBank  // 将内部类类型别名暴露出去
+class AbstractRegBank(depth:Int,width:Int){
+  val table: Vec[UInt] = RegInit(VecInit(Seq.fill(depth)(0.U(width.W))))//这里是存储的是值
+  def read (num : UInt):UInt = {table(num)}
+  def write (enable:Bool,num:UInt,data:UInt):Unit={
+    when(enable && num =/=0.U){table(num):=data}
+  }
 }
+
