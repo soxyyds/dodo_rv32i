@@ -31,8 +31,8 @@ class RegRead extends Module{
     val Rollback = Input(Bool())
 
     // 接收IF阶段传递的分支index
-    val bpuBranchA_index = Input(UInt(GHR_WIDTH.W))
-    val bpuBranchB_index = Input(UInt(GHR_WIDTH.W))
+    val bpuBranchAIdx = Input(UInt(GHR_WIDTH.W))
+    val bpuBranchBIdx = Input(UInt(GHR_WIDTH.W))
     // 输出到BPU的分支信息（双发射）
     val bpuBranchA = Output(new BranchIO)
     val bpuBranchB = Output(new BranchIO)
@@ -118,7 +118,7 @@ class RegRead extends Module{
   io.bpuBranchA.branch := INSTA.branch.Valid
   io.bpuBranchA.jump   := INSTA.jump.Valid
   io.bpuBranchA.taken  := INSTA.branch.actTaken
-  io.bpuBranchA.index  := io.bpuBranchA_index // 由IF阶段传递的index
+  io.bpuBranchA.index  := io.bpuBranchAIdx // 由IF阶段传递的index
   io.bpuBranchA.pc     := INSTA.pc
   io.bpuBranchA.target := Mux(INSTA.jump.Valid, INSTA.jump.actTarget,
                           Mux(INSTA.branch.Valid, INSTA.branch.target, 0.U))
@@ -126,7 +126,7 @@ class RegRead extends Module{
   io.bpuBranchB.branch := INSTB.branch.Valid
   io.bpuBranchB.jump   := INSTB.jump.Valid
   io.bpuBranchB.taken  := INSTB.branch.actTaken
-  io.bpuBranchB.index  := io.bpuBranchB_index // 由IF阶段传递的index
+  io.bpuBranchB.index  := io.bpuBranchBIdx // 由IF阶段传递的index
   io.bpuBranchB.pc     := INSTB.pc
   io.bpuBranchB.target := Mux(INSTB.jump.Valid, INSTB.jump.actTarget,
                           Mux(INSTB.branch.Valid, INSTB.branch.target, 0.U))

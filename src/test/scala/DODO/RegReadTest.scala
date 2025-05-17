@@ -38,8 +38,8 @@ class RegReadTest extends AnyFlatSpec with ChiselScalatestTester {
       c.io.FinD.poke(0.U.asTypeOf(new InstCtrlBlock()))
       c.io.FinE.poke(0.U.asTypeOf(new InstCtrlBlock()))
       c.io.Rollback.poke(false.B)
-      c.io.bpuBranchA_index.poke(0.U)
-      c.io.bpuBranchB_index.poke(0.U)
+      c.io.bpuBranchAIdx.poke(0.U)
+      c.io.bpuBranchBIdx.poke(0.U)
 
       c.clock.step(1)
 

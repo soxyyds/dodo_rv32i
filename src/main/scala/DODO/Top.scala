@@ -39,8 +39,8 @@ class Top extends Module{
 
   // 分支预测相关信号连接（双发射闭环）
   // InstFetch <-> RegRead
-  RegRead.io.bpuBranchA_index := InstFetch.io.bpuBranchA_index
-  RegRead.io.bpuBranchB_index := InstFetch.io.bpuBranchB_index
+  RegRead.io.bpuBranchAIdx := InstFetch.io.bpuBranchA_index
+  RegRead.io.bpuBranchBIdx := InstFetch.io.bpuBranchB_index
   InstFetch.io.bpuBranchA := RegRead.io.bpuBranchA
   InstFetch.io.bpuBranchB := RegRead.io.bpuBranchB
 
