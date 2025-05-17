@@ -55,7 +55,7 @@ class LoadIssue extends Bundle{
 class StoreIssue extends Bundle{
   val Valid: Bool = Bool()
   val addr :UInt= UInt(32.W)
-  val mask :UInt= UInt(32.W)
+  val mask :UInt= UInt(8.W)
   val data :UInt= UInt(32.W)
   val Ready :Bool= Bool()
 }

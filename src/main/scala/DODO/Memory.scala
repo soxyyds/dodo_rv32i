@@ -68,13 +68,13 @@ class Memory extends Module {
   val io = IO(new Bundle {
     val EXMEM = Input(new InstCtrlBlock)
     val FinE = Output(new InstCtrlBlock)
-    val CmtA = Input(new InstCtrlBlock)
+    val CmtA = Input(new InstCtrlBlock)//内存指令提交了之后才能将相应的值写入内存
 
     val ForwardLoad = Output(new LoadIssue)
     val ForwardStore = Input(new StoreIssue)
 
     val Rollback = Input(Bool())
-    val DataRam = new RAMHelperIO
+    val DataRam = new RAMHelperIO_2//相当于多了定义类的input和output
   })
 
   // === 1. 时序寄存当前指令 ===
@@ -82,18 +82,20 @@ class Memory extends Module {
 
   // === 2. RAM 接口地址转换 ===
   val Offset = 0x80000000L.U(64.W)
+  io.DataRam.inst_gain_en := false.B//初始化好所有的信号
+  io.DataRam.inst_data := 0.U.asTypeOf(Vec(2, UInt(32.W)))
+  io.DataRam.inst_address := 0.U.asTypeOf(UInt(64.W))//为了保持接口的一致性 此处需要都初始化好相应的信号
+  //其实我们不用管mem模块里面到底有多少的信号和输出端口 我们只要关注好我们这个哈佛架构的管道到底要多少信号
   io.DataRam.clk := clock
-  io.DataRam.en  := INST.load.Valid || (io.CmtA.Valid && io.CmtA.store.Valid)
-  io.DataRam.rIdx := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
-  io.DataRam.wIdx := Cat(0.U(3.W), (io.CmtA.store.addr - Offset)(63,3))
-  io.DataRam.wdata := io.CmtA.store.data
-  io.DataRam.wmask := io.CmtA.store.mask
-  io.DataRam.wen := io.CmtA.Valid && io.CmtA.store.Valid
+  io.DataRam.data_wen  := (io.CmtA.Valid && io.CmtA.store.Valid)
+  io.DataRam.data_address := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
+  io.DataRam.data_wdata := io.CmtA.store.data //获取要存入里面的数据
+  io.DataRam.func3 := io.CmtA.store.mask//获取掩码 mask
 
   // === 3. Store Forwarding 拼接逻辑 ===
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
   val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
-  val d_data = (io.DataRam.rdata & !wmask) | (wdata & wmask)
+  val d_data = (io.DataRam.data_rdata & !wmask) | (wdata & wmask)
 
   // === 4. 加载类型拼接处理 ===
   // 从64位总数据中逐级选择目标字节（load类型决定需要哪一段）
