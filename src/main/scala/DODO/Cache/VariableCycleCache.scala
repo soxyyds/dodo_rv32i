@@ -1,6 +1,6 @@
 package DODO.Cache
 
-import DODO.{if_mem, lsu_mem_c, mem_id}
+//import DODO.{if_mem, lsu_mem_c, mem_id}
 import chisel3._
 import chisel3.util._
 
