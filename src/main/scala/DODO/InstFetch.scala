@@ -21,9 +21,6 @@ class InstFetch extends Module {
     val InstRam = new RAMHelperIO_2
 
     // **------------------ 新增分支预测器接口 ------------------**
-    // ------------------ 新增分支预测器接口 ------------------
-    // 分支预测请求(当前 PC 发送给 BPU)当前程序计数器PC的值发送给分支预测器,请求预测该地址是否对应一条分支指令,以及预测的跳转目标。
-    val bpLookupPc = Output(UInt(32.W))
     // 分支预测结果(来自 BPU)
     val bpPredTakenA = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
     //true.B,预测跳转,Fetch 应更新 PC 为 bpPredTarget。
@@ -52,6 +49,11 @@ class InstFetch extends Module {
   val bpA = Module(new BP)
   val bpB = Module(new BP)
 
+  // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
+  val PC = RegInit("h0000000080000000".U(64.W))
+  val Offset = "h0000000080000000".U(64.W)
+  val Unaligned = PC(2) === 1.U  // 检查 PC 是否未对齐 8 字节
+
   // A通道分支预测
   bpA.io.lookupPc := PC
   bpA.io.branchIO := io.bpuBranchA // RegRead阶段反馈的A通道分支信息
@@ -69,13 +71,7 @@ class InstFetch extends Module {
   io.bpuBranchA_index := bpA.io.predIndex
   io.bpuBranchB_index := bpB.io.predIndex
 
-  // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
-  val PC = RegInit("h0000000080000000".U(64.W))
-  // ------------------ PC 更新逻辑（支持分支预测） ------------------
-  val PC = RegInit("h0000000080000000".U(64.W))//定义了一个64位的地址寄存器
-  val Offset = "h0000000080000000".U(64.W)
-  val Unaligned = PC(2) === 1.U// 检查 PC 是否未对齐 8 字节，8字节就是8的倍数，如果为1就是8对齐
-//如果是8对齐 就第三位整除,因为要么是8要么是4
+
   // 实现分支预测的板块，优先级:Commit 反馈 > 分支预测 > 默认顺序执行
   when(io.Rollback) {
     // 分支预测失败时，使用 Commit 提供的正确 PC,因为commit里的跳转具有强制性
