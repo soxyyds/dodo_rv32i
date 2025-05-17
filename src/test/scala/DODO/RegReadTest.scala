@@ -9,9 +9,9 @@ class RegReadTest extends AnyFlatSpec with ChiselScalatestTester {
   "RegRead" should "pass basic register read and rollback test" in {
     test(new RegRead) { c =>
       // 构造简单的InstCtrlBlock输入
-      val instA = WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-      val instB = WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-      val instC = WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      val instA = 0.U.asTypeOf(chiselTypeOf(c.io.DPRRA))
+      val instB = 0.U.asTypeOf(chiselTypeOf(c.io.DPRRB))
+      val instC = 0.U.asTypeOf(chiselTypeOf(c.io.DPRRC))
       instA.Valid := true.B
       instA.pregsrc1 := 1.U
       instA.pregsrc2 := 2.U
