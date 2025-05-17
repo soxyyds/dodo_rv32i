@@ -2,7 +2,8 @@ package DODO
 
 import chisel3._
 import chisel3.util._
-import DODO.BPU._  // 导入分支预测器相关模块
+import DODO.BPU._
+import DODO.BPU.Const._
 
 class InstFetch extends Module {
   val io = IO(new Bundle {
@@ -19,24 +20,57 @@ class InstFetch extends Module {
     // 指令存储器接口
     val InstRam = new RAMHelperIO_2
 
+    // **------------------ 新增分支预测器接口 ------------------**
     // ------------------ 新增分支预测器接口 ------------------
     // 分支预测请求(当前 PC 发送给 BPU)当前程序计数器PC的值发送给分支预测器,请求预测该地址是否对应一条分支指令,以及预测的跳转目标。
     val bpLookupPc = Output(UInt(32.W))
     // 分支预测结果(来自 BPU)
-    val bpPredTaken = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
+    val bpPredTakenA = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
     //true.B,预测跳转,Fetch 应更新 PC 为 bpPredTarget。
     //false.B:预测不跳转,Fetch 继续顺序执行(PC+4 或 PC+8)
-    val bpPredTarget = Input(UInt(32.W))//分支预测器返回的 预测跳转目标地址，仅在 bpPredTaken 为真时有效。
+    val bpPredTargetA = Input(UInt(64.W))//分支预测器返回的 预测跳转目标地址，仅在 bpPredTaken 为真时有效。
     //若预测跳转,Fetch 将 PC 更新为此地址。
     //通常来自 BTB 中存储的历史跳转目标。
+    // 双发射分支预测接口
+    val bpPredTakenB = Input(Bool())
+    val bpPredTargetB = Input(UInt(64.W))
+    // 新增：接收RegRead阶段反馈的分支信息。经过IF以保证时序正确
+    val bpuBranchA = Input(new BPU.BranchIO)
+    val bpuBranchB = Input(new BPU.BranchIO)
+    // 新增：输出分支预测index到RegRead
+    val bpuBranchA_index = Output(UInt(GHR_WIDTH.W))
+    val bpuBranchB_index = Output(UInt(GHR_WIDTH.W))
   })
 
-  // 初始化与预热逻辑(保持不变)
+  // 初始化与预热逻辑
   val Warmup = RegInit(0.U(3.W))
   when(Warmup === 4.U) { Warmup := 4.U }
     .otherwise { Warmup := Warmup + 1.U }
   val ENABLE = Warmup === 4.U && !io.FetchBlock//这里阻塞信号起到了作用
 
+  // ------------------ 分支预测器例化（双发射） ------------------
+  val bpA = Module(new BP)
+  val bpB = Module(new BP)
+
+  // A通道分支预测
+  bpA.io.lookupPc := PC
+  bpA.io.branchIO := io.bpuBranchA // RegRead阶段反馈的A通道分支信息
+  io.bpPredTakenA := bpA.io.predTaken
+  io.bpPredTargetA := bpA.io.predTarget
+
+  // B通道分支预测
+  val nextPC_B = PC + 4.U // B通道PC为PC+4
+  bpB.io.lookupPc := nextPC_B
+  bpB.io.branchIO := io.bpuBranchB
+  io.bpPredTakenB := bpB.io.predTaken
+  io.bpPredTargetB := bpB.io.predTarget
+
+  // 新增：将分支预测index输出到RegRead
+  io.bpuBranchA_index := bpA.io.predIndex
+  io.bpuBranchB_index := bpB.io.predIndex
+
+  // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
+  val PC = RegInit("h0000000080000000".U(64.W))
   // ------------------ PC 更新逻辑（支持分支预测） ------------------
   val PC = RegInit("h0000000080000000".U(64.W))//定义了一个64位的地址寄存器
   val Offset = "h0000000080000000".U(64.W)
@@ -49,21 +83,27 @@ class InstFetch extends Module {
   }.elsewhen(io.CmtA.jump.Valid) {
     // Commit 阶段的跳转指令（绝对跳转）
     PC := io.CmtA.jump.actTarget
-  }.elsewhen(io.CmtA.branch.Valid && io.CmtA.branch.actTaken) {
+  }.elsewhen(io.CmtA.branch.Valid && (io.CmtA.branch.actTaken).asBool) {
     // Commit 阶段的分支指令（条件分支且实际跳转）
     PC := io.CmtA.branch.target
   }.otherwise {
     when(ENABLE) {
-      // 动态分支预测：如果预测跳转，则更新 PC 为预测目标，必须是enable的时候才能去取
-      when(io.bpPredTaken) {
-        PC := io.bpPredTarget
+      // 动态分支预测：如果A预测跳转，则更新 PCA 为预测目标
+      when(io.bpPredTakenA) {
+        // A预测跳转，若B也预测跳转且目标不同，优先A
+        PC := io.bpPredTargetA
+      }.elsewhen(io.bpPredTakenB) {
+        PC := io.bpPredTargetB
       }.otherwise {
-        // 默认顺序执行
-        when(Unaligned) { PC := PC + 4.U }//未对齐+4
-          .otherwise { PC := PC + 8.U }///对齐+8
+        when(Unaligned) {
+          PC := PC + 4.U
+        } .otherwise {
+          PC := PC + 8.U
+        }
       }
     }
   }
+  // 注：此处A优先，B预测跳转仅在A未跳转时生效。
 
   // ------------------ 指令存储器访问（保持不变） ------------------
   //在这个部分是获取对应的信息的地方
@@ -75,8 +115,6 @@ class InstFetch extends Module {
   io.InstRam.data_rdata := 0.U
   io.InstRam.data_wen := false.B//其他多余的信号需要初始化废弃掉
 
-  // ------------------ 分支预测器接口连接 ------------------
-  io.bpLookupPc := PC  // 将当前 PC 发送给 BPU 进行预测
 
   // ------------------ 指令拆分与输出逻辑（保持不变） ------------------
   val ValidA = Mux(Unaligned, ENABLE, ENABLE)//enable控制了指令是否需要取

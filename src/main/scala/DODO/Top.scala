@@ -36,13 +36,12 @@ class Top extends Module{
   RegRead.io.RREXC <> Execute.io.RREXC
   Execute.io.EXMEM <> Memory.io.EXMEM
 
-  //BP
-  BPMachine.io.branchIO := InstDecode.io.branchInfo
-  BPMachine.io.lookupPc := InstFetch.io.bpLookupPc
-  InstFetch.io.bpPredTaken := BPMachine.io.predTaken
-  InstFetch.io.bpPredTarget := BPMachine.io.predTarget
-  InstFetch.io.bpLookupPc := BPMachine.io.predIndex
-
+  // 分支预测相关信号连接（双发射闭环）
+  // InstFetch <-> RegRead
+  RegRead.io.bpuBranchA_index := InstFetch.io.bpuBranchA_index
+  RegRead.io.bpuBranchB_index := InstFetch.io.bpuBranchB_index
+  InstFetch.io.bpuBranchA := RegRead.io.bpuBranchA
+  InstFetch.io.bpuBranchB := RegRead.io.bpuBranchB
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A
