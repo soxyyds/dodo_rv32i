@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ScalaCompilerConfiguration">
-    <option name="separateProdTestSources" value="true" />
-    <profile name="sbt 1" modules="dodo_rv32i,dodo_rv32i_3166" />
+    <profile name="sbt 1" modules="dodo_rv32i_3166" />
     <profile name="sbt 2" modules="dodo_rv32i.main,dodo_rv32i.test">
       <plugins>
         <plugin path="C:\Users\86158\AppData\Local\Coursier\Cache\v1\https\repo1.maven.org\maven2\edu\berkeley\cs\chisel3-plugin_2.12.12\3.5.4\chisel3-plugin_2.12.12-3.5.4.jar" />
+      </plugins>
+    </profile>
+    <profile name="sbt 3" modules="dodo_rv32i">
+      <plugins>
+        <plugin path="C:\Users\haoyu\AppData\Local\Coursier\Cache\v1\https\repo1.maven.org\maven2\edu\berkeley\cs\chisel3-plugin_2.12.12\3.5.4\chisel3-plugin_2.12.12-3.5.4.jar" />
       </plugins>
     </profile>
   </component>

@@ -23,7 +23,7 @@ class InstCtrlBlock extends Bundle{
   //exe
   val src1 :UInt= UInt(32.W)
   val src2 :UInt= UInt(32.W)
-  val imm :UInt= UInt(32.W)
+  val imm = new IMM
   val wbdata :UInt= UInt(32.W)
   //bundle
   val jump = new JumpIssue
@@ -36,13 +36,13 @@ class InstCtrlBlock extends Bundle{
 }
 class JumpIssue extends Bundle{
   val Valid: Bool = Bool()
-  val proTarget :UInt= UInt(32.W)
+//  val proTarget :UInt= UInt(32.W)
   val actTarget :UInt= UInt(32.W)
   val link :UInt= UInt(32.W)
 }
 class BranchIssue extends Bundle{
   val Valid: Bool = Bool()
-  val proTaken :Bool= Bool()
+//  val proTaken :Bool= Bool()
   val actTaken :Bool= Bool()
   val target: UInt = UInt(32.W)
 }
