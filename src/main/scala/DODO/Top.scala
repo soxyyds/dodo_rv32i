@@ -20,8 +20,8 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
-  val bpA         = Module(new BP)
-  val bpB         = Module(new BP)
+  val bpuA        = Module(new BP)
+  val bpuB        = Module(new BP)
 
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
@@ -38,26 +38,26 @@ class Top extends Module{
   RegRead.io.RREXC <> Execute.io.RREXC
   Execute.io.EXMEM <> Memory.io.EXMEM
 
-  // 分支预测相关信号连接（双发射闭环）
-  // InstFetch <-> RegRead
-  InstFetch.io.bpPredTakenA := bpA.io.predTaken
-  InstFetch.io.bpPredTargetA := bpA.io.predTarget
-  InstFetch.io.bpPredTakenB := bpB.io.predTaken
-  InstFetch.io.bpPredTargetB := bpB.io.predTarget
-  bpA.io.lookupPc := InstFetch.io.bpuPCA
-  bpB.io.lookupPc := InstFetch.io.bpuPCB
-
-  // Index传递
-  InstFetch.io.BPIFBranchAIdx := bpA.io.predIndex
-  InstFetch.io.BPIFBranchBIdx := bpB.io.predIndex
+  // 分支预测相关信号连接
+  // BranchInfo
+  InstFetch.io.RRIFBranchAInfo := RegRead.io.bpuBranchA
+  InstFetch.io.RRIFBranchBInfo := RegRead.io.bpuBranchB
+  bpuA.io.branchIO := InstFetch.io.IFBPBranchAInfo
+  bpuB.io.branchIO := InstFetch.io.IFBPBranchBInfo
+  // index
+  InstFetch.io.BPIFBranchAIdx := bpuA.io.predIndex
+  InstFetch.io.BPIFBranchBIdx := bpuB.io.predIndex
   RegRead.io.bpuBranchAIdx := InstFetch.io.IFRRBranchAIdx
   RegRead.io.bpuBranchBIdx := InstFetch.io.IFRRBranchBIdx
+  // prediction
+  InstFetch.io.bpPredTakenA := bpuA.io.predTaken
+  InstFetch.io.bpPredTargetA := bpuA.io.predTarget
+  InstFetch.io.bpPredTakenB := bpuB.io.predTaken
+  InstFetch.io.bpPredTargetB := bpuB.io.predTarget
+  //pc
+  bpuA.io.lookupPc := InstFetch.io.bpuPCA
+  bpuB.io.lookupPc := InstFetch.io.bpuPCB
 
-  // RegRead阶段反馈的通道分支信息
-  InstFetch.io.RRIFBranchAInfo <> RegRead.io.bpuBranchA
-  InstFetch.io.RRIFBranchBInfo <> RegRead.io.bpuBranchB
-  bpA.io.branchIO <> InstFetch.io.IFBPBranchAInfo
-  bpB.io.branchIO <> InstFetch.io.IFBPBranchBInfo
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A

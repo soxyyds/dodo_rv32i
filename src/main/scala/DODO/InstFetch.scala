@@ -155,6 +155,7 @@ class RAMHelperIO extends Bundle{
   val wen = Output(Bool())
 }//在这个地方传给后面instfetch其实是一个指令是否有效（因为有些指令传一个 另一些传两条）
 //然后还有指令的具体32位值 还有其指令的64位pc的地址 Valid: Bool, inst: UInt, pc: UInt 这三个信息是从内存mem里面获取的
+
 class RAMHelperIO_2 extends Bundle {
   // 基础时钟
   val clk = Output(Clock())
