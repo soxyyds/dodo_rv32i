@@ -53,16 +53,36 @@ class InstDecode extends Module {
   }
 
   // GenICB
-  def GenICB(isa: ISA, imm: IMM, regdes: UInt, regsrc1: UInt, regsrc2: UInt,
-             csr_addr: UInt, IFID: InstCtrlBlock): InstCtrlBlock = {
+  def GenICB(
+              isa: ISA,
+              imm: IMM,
+              regdes: UInt,
+              regsrc1: UInt,
+              regsrc2: UInt,
+              csr_addr: UInt,
+              IFID: InstCtrlBlock
+            ): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
-    ICB := IFID
+    ICB := IFID  // 保留原始信号（如 PC、inst 等）
+
+    // 更新解码后的字段
     ICB.isa := isa
     ICB.regdes := regdes
     ICB.regsrc1 := regsrc1
     ICB.regsrc2 := regsrc2
-    ICB.imm := imm
+
+    // 立即数字段赋值
+    ICB.imm.I := imm.I
+    ICB.imm.B := imm.B
+    ICB.imm.S := imm.S
+    ICB.imm.U := imm.U
+    ICB.imm.J := imm.J
+    ICB.imm.Z := imm.Z  // 新增 Z 字段
+
+    // CSR 信号
     ICB.csr_addr := csr_addr
+    ICB.csr_wdata := IFID.csr_wdata  // 从输入传递
+
     ICB
   }
 }
@@ -131,11 +151,12 @@ class Decoder extends Module {
   io.isa.AUIPC := (io.inst === BitPat("b?????????????????????_?????_0010111"))  // PC加立即数
 
   // 立即数提取
-  val I = io.inst(31,20)  // I-type
-  val B = Cat(io.inst(31), io.inst(7), io.inst(30,25), io.inst(11,8), 0.U(1.W)) // B-type
-  val S = Cat(io.inst(31,25), io.inst(11,7)) // S-type
-  val U = io.inst(31,12)  // U-type（不需要填充0）
-  val J = Cat(io.inst(31), io.inst(19,12), io.inst(20), io.inst(30,21), 0.U(1.W)) // J-type
+  val I = io.inst(31, 20)
+  val B = Cat(io.inst(31), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))
+  val S = Cat(io.inst(31, 25), io.inst(11, 7))
+  val U = io.inst(31, 12)
+  val J = Cat(io.inst(31), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W))
+  val Z = 0.U(32.W)
 
   // 32位立即数扩展
   io.imm.I := SignExt(I, 32)
@@ -143,10 +164,11 @@ class Decoder extends Module {
   io.imm.S := SignExt(S, 32)
   io.imm.U := U  //
   io.imm.J := SignExt(J, 32)
+  io.imm.Z := Z
 
   // 识别CSRRW指令 (opcode=SYSTEM, func3=001)
-  io.isa.CSRRW := (io.inst(6,0) === "b1110011".U) &&
-    (io.inst(14,12) === "b001".U)
+  private val csrrwPattern = BitPat("b????????????_?????_001_?????_1110011")
+  io.isa.CSRRW := (io.inst === csrrwPattern)
   // CSR地址
   io.csr_addr := io.inst(31,20)
 
@@ -156,7 +178,8 @@ class Decoder extends Module {
     io.isa.Bclass() ||
     io.isa.Sclass() ||
     io.isa.Lclass() ||
-    io.isa.JALR/* 识别需要rs1的指令 */
+    io.isa.JALR||
+    io.isa.CSRRW
   val src2 =(io.isa.Aclass() &&
     ( io.isa.ADD || io.isa.SUB ||
       io.isa.SLL || io.isa.SRL ||
