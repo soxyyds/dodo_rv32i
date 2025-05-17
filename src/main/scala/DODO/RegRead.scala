@@ -5,7 +5,6 @@ import chisel3.util._
 import DODO.RegMap
 import DODO.BPU._
 import DODO.BPU.Const._
-import DODO.BPU.BranchIO
 
 class RegRead extends Module{
   val io = IO(new Bundle{
@@ -30,12 +29,13 @@ class RegRead extends Module{
     val FinE = Input(new InstCtrlBlock)
 
     val Rollback = Input(Bool())
-    // 新增：接收IF阶段传递的分支index
+
+    // 接收IF阶段传递的分支index
     val bpuBranchA_index = Input(UInt(GHR_WIDTH.W))
     val bpuBranchB_index = Input(UInt(GHR_WIDTH.W))
-    // 新增：输出到BPU的分支信息（双发射）
-    val bpuBranchA = Output(new BPU.BranchIO)
-    val bpuBranchB = Output(new BPU.BranchIO)
+    // 输出到BPU的分支信息（双发射）
+    val bpuBranchA = Output(new BranchIO)
+    val bpuBranchB = Output(new BranchIO)
   })
 
   //将指令存入寄存器，形成流水线寄存器
@@ -113,14 +113,16 @@ class RegRead extends Module{
   io.bpuBranchA.taken  := INSTA.branch.actTaken
   io.bpuBranchA.index  := io.bpuBranchA_index // 由IF阶段传递的index
   io.bpuBranchA.pc     := INSTA.pc
-  io.bpuBranchA.target := INSTA.branch.target
+  io.bpuBranchA.target := Mux(INSTA.jump.Valid, INSTA.jump.actTarget,
+                          Mux(INSTA.branch.Valid, INSTA.branch.target, 0.U))
 
   io.bpuBranchB.branch := INSTB.branch.Valid
   io.bpuBranchB.jump   := INSTB.jump.Valid
   io.bpuBranchB.taken  := INSTB.branch.actTaken
   io.bpuBranchB.index  := io.bpuBranchB_index // 由IF阶段传递的index
   io.bpuBranchB.pc     := INSTB.pc
-  io.bpuBranchB.target := INSTB.branch.target
+  io.bpuBranchB.target := Mux(INSTB.jump.Valid, INSTB.jump.actTarget,
+                          Mux(INSTB.branch.Valid, INSTB.branch.target, 0.U))
 
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
@@ -204,16 +206,13 @@ class BranchJumpUnit extends Module{
   val jal_target = io.pc + io.imm.J
   val jalr_target = io.src1 + io.imm.I
 
-  //!!当前问题，动态预测思路还没完全捋清楚
   //获取并综合跳转信息
   io.jump.Valid := io.isa.JAL || io.isa.JALR
-  io.jump.proTarget := 0.U
   io.jump.actTarget := Mux(io.isa.JAL, jal_target, Mux(io.isa.JALR, jalr_target, 0.U))
   io.jump.link := io.pc + 4.U
 
   //获取并综合分支信息
   io.branch.Valid := io.isa.BEQ || io.isa.BNE || io.isa.BGEU || io.isa.BLTU || io.isa.BGE || io.isa.BLT
-  io.branch.proTaken := false.B
   io.branch.actTaken := beq || bne || bgeu || bltu || bge || blt
   io.branch.target := b_target
 
