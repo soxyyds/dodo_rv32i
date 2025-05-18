@@ -34,8 +34,8 @@ class RegRead extends Module{
     val bpuBranchAIdx = Input(UInt(GHR_WIDTH.W))
     val bpuBranchBIdx = Input(UInt(GHR_WIDTH.W))
     // 输出到BPU的分支信息（双发射）
-    val bpuBranchA = Output(new BranchIO)
-    val bpuBranchB = Output(new BranchIO)
+    val bpuBranchA = Output(new BranchInfo)
+    val bpuBranchB = Output(new BranchInfo)
   })
 
   //将指令存入寄存器，形成流水线寄存器

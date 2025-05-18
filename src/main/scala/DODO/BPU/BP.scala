@@ -7,7 +7,7 @@ import chisel3.util.log2Ceil
 
 
   // Branch Information
-class BranchIO extends Bundle {
+class BranchInfo extends Bundle {
   val branch  = Bool()              // branch
   val jump    = Bool()              // jal or jalr
   val taken   = Bool()              // taken or not
@@ -18,7 +18,7 @@ class BranchIO extends Bundle {
 
 class BP extends Module {
   val io = IO(new Bundle {
-    val branchIO  = Input(new BranchIO)
+    val branchIO  = Input(new BranchInfo)
     val lookupPc    = Input(UInt(ADDR_WIDTH.W))
     val predTaken   = Output(Bool())
     val predTarget  = Output(UInt(ADDR_WIDTH.W))

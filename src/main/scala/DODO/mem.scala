@@ -100,7 +100,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     }
   }
 
-  loadMemoryFromFile(memInside, ".../.../.../drystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(memInside, "src/main/resources/dhrystone/drystone.data", MemoryLoadFileType.Hex)
 
   val dataAddr   = Wire(UInt(64.W))
   val dataAddrP1 = Wire(UInt(64.W))

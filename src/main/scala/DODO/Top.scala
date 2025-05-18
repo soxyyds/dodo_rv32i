@@ -12,7 +12,6 @@ class Top extends Module{
   })
 
   // Module
-  val BPMachine   = Module(new BP)
   val InstFetch   = Module(new InstFetch)
   val InstDecode  = Module(new InstDecode)
   val RegMap      = Module(new RegMap)
@@ -21,6 +20,9 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
+  val bpuA        = Module(new BP)
+  val bpuB        = Module(new BP)
+
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
   InstFetch.io.IFIDB <> InstDecode.io.IFIDB
@@ -36,12 +38,26 @@ class Top extends Module{
   RegRead.io.RREXC <> Execute.io.RREXC
   Execute.io.EXMEM <> Memory.io.EXMEM
 
-  // 分支预测相关信号连接（双发射闭环）
-  // InstFetch <-> RegRead
-  RegRead.io.bpuBranchAIdx := InstFetch.io.bpuBranchA_index
-  RegRead.io.bpuBranchBIdx := InstFetch.io.bpuBranchB_index
-  InstFetch.io.bpuBranchA := RegRead.io.bpuBranchA
-  InstFetch.io.bpuBranchB := RegRead.io.bpuBranchB
+  // 分支预测相关信号连接
+  // BranchInfo
+  InstFetch.io.RRIFBranchAInfo := RegRead.io.bpuBranchA
+  InstFetch.io.RRIFBranchBInfo := RegRead.io.bpuBranchB
+  bpuA.io.branchIO := InstFetch.io.IFBPBranchAInfo
+  bpuB.io.branchIO := InstFetch.io.IFBPBranchBInfo
+  // index
+  InstFetch.io.BPIFBranchAIdx := bpuA.io.predIndex
+  InstFetch.io.BPIFBranchBIdx := bpuB.io.predIndex
+  RegRead.io.bpuBranchAIdx := InstFetch.io.IFRRBranchAIdx
+  RegRead.io.bpuBranchBIdx := InstFetch.io.IFRRBranchBIdx
+  // prediction
+  InstFetch.io.bpPredTakenA := bpuA.io.predTaken
+  InstFetch.io.bpPredTargetA := bpuA.io.predTarget
+  InstFetch.io.bpPredTakenB := bpuB.io.predTaken
+  InstFetch.io.bpPredTargetB := bpuB.io.predTarget
+  //pc
+  bpuA.io.lookupPc := InstFetch.io.bpuPCA
+  bpuB.io.lookupPc := InstFetch.io.bpuPCB
+
 
   // ReOrder
   Commit.io.EnA <> RegMap.io.out_A
@@ -135,6 +151,6 @@ class TopWithMemory extends Module {
   memory.io.ex_mem.func3 := cpu.io.DataRam.func3
   //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
   //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
-  memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
+  //memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
 
 }

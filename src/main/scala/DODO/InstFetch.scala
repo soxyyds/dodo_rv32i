@@ -20,10 +20,6 @@ class InstFetch extends Module {
     // 指令存储器接口
     val InstRam = new RAMHelperIO_2
 
-    // **------------------ 新增分支预测器接口 ------------------**
-    // ------------------ 新增分支预测器接口 ------------------
-    // 分支预测请求(当前 PC 发送给 BPU)当前程序计数器PC的值发送给分支预测器,请求预测该地址是否对应一条分支指令,以及预测的跳转目标。
-    val bpLookupPc = Output(UInt(32.W))
     // 分支预测结果(来自 BPU)
     val bpPredTakenA = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
     //true.B,预测跳转,Fetch 应更新 PC 为 bpPredTarget。
@@ -34,12 +30,18 @@ class InstFetch extends Module {
     // 双发射分支预测接口
     val bpPredTakenB = Input(Bool())
     val bpPredTargetB = Input(UInt(64.W))
-    // 新增：接收RegRead阶段反馈的分支信息。经过IF以保证时序正确
-    val bpuBranchA = Input(new BPU.BranchIO)
-    val bpuBranchB = Input(new BPU.BranchIO)
-    // 新增：输出分支预测index到RegRead
-    val bpuBranchA_index = Output(UInt(GHR_WIDTH.W))
-    val bpuBranchB_index = Output(UInt(GHR_WIDTH.W))
+    // 接收RegRead阶段反馈的分支信息。经过IF以保证时序正确
+    val RRIFBranchAInfo = Input(new BranchInfo)
+    val RRIFBranchBInfo = Input(new BranchInfo)
+    val IFBPBranchAInfo = Output(new BranchInfo)
+    val IFBPBranchBInfo = Output(new BranchInfo)
+    // 输出分支预测index到RegRead
+    val BPIFBranchAIdx = Input(UInt(GHR_WIDTH.W))
+    val BPIFBranchBIdx = Input(UInt(GHR_WIDTH.W))
+    val IFRRBranchAIdx = Output(UInt(GHR_WIDTH.W))
+    val IFRRBranchBIdx = Output(UInt(GHR_WIDTH.W))
+    val bpuPCA = Output(UInt(ADDR_WIDTH.W))
+    val bpuPCB = Output(UInt(ADDR_WIDTH.W))
   })
 
   // 初始化与预热逻辑
@@ -48,34 +50,13 @@ class InstFetch extends Module {
     .otherwise { Warmup := Warmup + 1.U }
   val ENABLE = Warmup === 4.U && !io.FetchBlock//这里阻塞信号起到了作用
 
-  // ------------------ 分支预测器例化（双发射） ------------------
-  val bpA = Module(new BP)
-  val bpB = Module(new BP)
-
-  // A通道分支预测
-  bpA.io.lookupPc := PC
-  bpA.io.branchIO := io.bpuBranchA // RegRead阶段反馈的A通道分支信息
-  io.bpPredTakenA := bpA.io.predTaken
-  io.bpPredTargetA := bpA.io.predTarget
-
-  // B通道分支预测
-  val nextPC_B = PC + 4.U // B通道PC为PC+4
-  bpB.io.lookupPc := nextPC_B
-  bpB.io.branchIO := io.bpuBranchB
-  io.bpPredTakenB := bpB.io.predTaken
-  io.bpPredTargetB := bpB.io.predTarget
-
-  // 新增：将分支预测index输出到RegRead
-  io.bpuBranchA_index := bpA.io.predIndex
-  io.bpuBranchB_index := bpB.io.predIndex
 
   // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
   val PC = RegInit("h0000000080000000".U(64.W))
-  // ------------------ PC 更新逻辑（支持分支预测） ------------------
-  val PC = RegInit("h0000000080000000".U(64.W))//定义了一个64位的地址寄存器
   val Offset = "h0000000080000000".U(64.W)
-  val Unaligned = PC(2) === 1.U// 检查 PC 是否未对齐 8 字节，8字节就是8的倍数，如果为1就是8对齐
-//如果是8对齐 就第三位整除,因为要么是8要么是4
+  val Unaligned = PC(2) === 1.U  // 检查 PC 是否未对齐 8 字节
+
+
   // 实现分支预测的板块，优先级:Commit 反馈 > 分支预测 > 默认顺序执行
   when(io.Rollback) {
     // 分支预测失败时，使用 Commit 提供的正确 PC,因为commit里的跳转具有强制性
@@ -112,7 +93,7 @@ class InstFetch extends Module {
   io.InstRam.inst_address := Cat(0.U(3.W), (PC - Offset)(63,3))
   io.InstRam.data_address := 0.U
   io.InstRam.data_wdata := 0.U
-  io.InstRam.data_rdata := 0.U
+  //io.InstRam.data_rdata := 0.U
   io.InstRam.data_wen := false.B//其他多余的信号需要初始化废弃掉
 
 
@@ -123,6 +104,8 @@ class InstFetch extends Module {
   val InstB = Mux(Unaligned, 0.U(32.W), io.InstRam.inst_data(1))//这里虽然没有直接受enable控制，但是实际上pc没有动，每次取得的inst还是一样
   val PCA = Mux(Unaligned, PC, PC)
   val PCB = Mux(Unaligned, 0.U(64.W), PC + 4.U)
+  io.bpuPCA := PCA
+  io.bpuPCB := PCB
 
   when(io.Rollback) {
     io.IFIDA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -172,6 +155,7 @@ class RAMHelperIO extends Bundle{
   val wen = Output(Bool())
 }//在这个地方传给后面instfetch其实是一个指令是否有效（因为有些指令传一个 另一些传两条）
 //然后还有指令的具体32位值 还有其指令的64位pc的地址 Valid: Bool, inst: UInt, pc: UInt 这三个信息是从内存mem里面获取的
+
 class RAMHelperIO_2 extends Bundle {
   // 基础时钟
   val clk = Output(Clock())
@@ -189,7 +173,7 @@ class RAMHelperIO_2 extends Bundle {
   val data_address   = Output(UInt(64.W)) // 数据地址（字节地址）需要存入或者取出的数据的地址
   val data_wen    = Output(Bool())     // 写使能，数据写的信号，决定是否可以存入的信号，这个由cmtable决定
   val data_wdata  = Output(UInt(64.W)) // 写入数据，需要存入存储器的数据
-  val func3  = Output(UInt(3.W))  // 字节写掩码
+  val func3  = Input(UInt(3.W))  // 字节写掩码
   val data_rdata  = Input(UInt(64.W))//读取的使能信号是受dataAddr 和 func3 有效和wen信号控制的
   // 原子操作标志
 }
