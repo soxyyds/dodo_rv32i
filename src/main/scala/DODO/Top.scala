@@ -2,11 +2,13 @@ package DODO
 
 import chisel3._
 import chisel3.util._
-import BPU._
+
 
 class Top extends Module{
   val io = IO(new Bundle{
-    val InstRam = new RAMHelperIO_2
+    val pc = Output(UInt(64.W))
+    val Inst_A = Input(UInt(32.W))
+    val Inst_B = Input(UInt(32.W))
     val DataRam = new RAMHelperIO_2
     //    val uart = new UARTIO
   })
@@ -20,8 +22,11 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
-  val bpuA        = Module(new BP)
-  val bpuB        = Module(new BP)
+
+  io.pc := InstFetch.io.addressout
+  InstFetch.io.Inst_In_A := io.Inst_A
+  InstFetch.io.Inst_In_B := io.Inst_B
+
 
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
@@ -38,25 +43,6 @@ class Top extends Module{
   RegRead.io.RREXC <> Execute.io.RREXC
   Execute.io.EXMEM <> Memory.io.EXMEM
 
-  // 分支预测相关信号连接
-  // BranchInfo
-  InstFetch.io.RRIFBranchAInfo := RegRead.io.bpuBranchA
-  InstFetch.io.RRIFBranchBInfo := RegRead.io.bpuBranchB
-  bpuA.io.branchIO := InstFetch.io.IFBPBranchAInfo
-  bpuB.io.branchIO := InstFetch.io.IFBPBranchBInfo
-  // index
-  InstFetch.io.BPIFBranchAIdx := bpuA.io.predIndex
-  InstFetch.io.BPIFBranchBIdx := bpuB.io.predIndex
-  RegRead.io.bpuBranchAIdx := InstFetch.io.IFRRBranchAIdx
-  RegRead.io.bpuBranchBIdx := InstFetch.io.IFRRBranchBIdx
-  // prediction
-  InstFetch.io.bpPredTakenA := bpuA.io.predTaken
-  InstFetch.io.bpPredTargetA := bpuA.io.predTarget
-  InstFetch.io.bpPredTakenB := bpuB.io.predTaken
-  InstFetch.io.bpPredTargetB := bpuB.io.predTarget
-  //pc
-  bpuA.io.lookupPc := InstFetch.io.bpuPCA
-  bpuB.io.lookupPc := InstFetch.io.bpuPCB
 
 
   // ReOrder
@@ -137,6 +123,9 @@ class TopWithMemory extends Module {
   //我们应该用的架构是哈佛架构 就是访存和取指是两条通路
   //取指块最重要的是把指令拿回来
   //下面是访存块
+  data_memory.io.if_mem.instAddr := cpu.io.pc
+  cpu.io.Inst_A := data_memory.io.mem_id.inst(0)
+  cpu.io.Inst_B := data_memory.io.mem_id.inst(1)
   data_memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen//写入的控制信号
   data_memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
   data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata//这个传进去的是地址和数据
@@ -145,5 +134,4 @@ class TopWithMemory extends Module {
   data_memory.io.ex_mem.func3 := cpu.io.DataRam.func3
   //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
   //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
-
 }

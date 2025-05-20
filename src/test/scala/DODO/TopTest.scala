@@ -20,7 +20,7 @@ class TopWithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
         dut.clock.step(1)
 
         // 每隔一定周期打印一次进度
-        if (cycle % 1000 == 0) {
+        if (cycle % 1 == 0) {
           println(s"已执行 $cycle 个周期...")
         }
 

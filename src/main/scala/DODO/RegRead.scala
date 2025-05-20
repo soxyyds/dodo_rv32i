@@ -3,8 +3,7 @@ package DODO
 import chisel3._
 import chisel3.util._
 import DODO.RegMap
-import DODO.BPU._
-import DODO.BPU.Const._
+
 
 class RegRead extends Module{
   val io = IO(new Bundle{
@@ -30,12 +29,6 @@ class RegRead extends Module{
 
     val Rollback = Input(Bool())
 
-    // 接收IF阶段传递的分支index
-    val bpuBranchAIdx = Input(UInt(GHR_WIDTH.W))
-    val bpuBranchBIdx = Input(UInt(GHR_WIDTH.W))
-    // 输出到BPU的分支信息（双发射）
-    val bpuBranchA = Output(new BranchInfo)
-    val bpuBranchB = Output(new BranchInfo)
   })
 
   //将指令存入寄存器，形成流水线寄存器
@@ -114,22 +107,7 @@ class RegRead extends Module{
     io.RREXB.csr_wdata := src3
   }
 
-  // 新增：生成A/B通道的分支信息，index由IF阶段传递
-  io.bpuBranchA.branch := INSTA.branch.Valid
-  io.bpuBranchA.jump   := INSTA.jump.Valid
-  io.bpuBranchA.taken  := INSTA.branch.actTaken
-  io.bpuBranchA.index  := io.bpuBranchAIdx // 由IF阶段传递的index
-  io.bpuBranchA.pc     := INSTA.pc
-  io.bpuBranchA.target := Mux(INSTA.jump.Valid, INSTA.jump.actTarget,
-                          Mux(INSTA.branch.Valid, INSTA.branch.target, 0.U))
 
-  io.bpuBranchB.branch := INSTB.branch.Valid
-  io.bpuBranchB.jump   := INSTB.jump.Valid
-  io.bpuBranchB.taken  := INSTB.branch.actTaken
-  io.bpuBranchB.index  := io.bpuBranchBIdx // 由IF阶段传递的index
-  io.bpuBranchB.pc     := INSTB.pc
-  io.bpuBranchB.target := Mux(INSTB.jump.Valid, INSTB.jump.actTarget,
-                          Mux(INSTB.branch.Valid, INSTB.branch.target, 0.U))
 
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)

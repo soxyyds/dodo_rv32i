@@ -6,7 +6,7 @@ class InstCtrlBlock extends Bundle{
   //base
   val Valid :Bool = Bool()
   val inst: UInt = UInt(32.W)
-  val pc: UInt = UInt(32.W)
+  val pc: UInt = UInt(64.W)
   val isa = new ISA
   //reorder
   val finish: Bool = Bool()
@@ -36,31 +36,31 @@ class InstCtrlBlock extends Bundle{
 
   //BP
   val bpPredTaken = Bool()//0为不跳
-  val bpPredTarget = UInt(32.W)
+  val bpPredTarget = UInt(64.W)
   val bppredIndex = UInt(10.W)
 }
 class JumpIssue extends Bundle{
   val Valid: Bool = Bool()
 //  val proTarget :UInt= UInt(32.W)
-  val actTarget :UInt= UInt(32.W)
-  val link :UInt= UInt(32.W)
+  val actTarget :UInt= UInt(64.W)
+  val link :UInt= UInt(64.W)
 }
 class BranchIssue extends Bundle{
   val Valid: Bool = Bool()
   val proTaken :Bool= Bool()
   val actTaken :Bool= Bool()
-  val target: UInt = UInt(32.W)
+  val target: UInt = UInt(64.W)
 }
 class LoadIssue extends Bundle{
   val Valid: Bool = Bool()
-  val addr :UInt= UInt(32.W)
+  val addr :UInt= UInt(64.W)
   val data :UInt= UInt(32.W)
   val Ready: Bool = Bool()
 }
 class StoreIssue extends Bundle{
   val Valid: Bool = Bool()
-  val addr :UInt= UInt(32.W)
-  val mask :UInt= UInt(8.W)
+  val addr :UInt= UInt(64.W)
+  val mask :UInt= UInt(3.W)
   val data :UInt= UInt(32.W)
   val Ready :Bool= Bool()
 }

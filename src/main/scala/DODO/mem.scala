@@ -1,6 +1,4 @@
-package DODO
-
-// 修改成自己项目的文件夹名称
+package DODO // 修改成自己项目的文件夹名称
 
 import chisel3._
 import chisel3.util._
@@ -23,21 +21,9 @@ class lsu_mem_c extends Bundle {
   val func3     = Output(UInt(3.W))
 }
 
-//class lsu_mem_c extends Bundle {
-//  val atomFlag  = Output(Bool())
-//  val dataAddr  = Output(UInt(64.W))
-//  val writeEn   = Output(Bool())
-//  val writeData = Output(UInt(32.W)) // 改为32位宽数据
-//  val func3     = Output(UInt(3.W))
-//}
-
 class mem_lsu_c extends Bundle {
   val data = Output(UInt(64.W))
 }
-
-//class mem_lsu_c extends Bundle {
-//  val data = Output(UInt(32.W)) // 改为32位宽数据
-//}
 
 class mem(memDepth: Int, instWidth: Int) extends Module {
   val io = IO(new Bundle {
@@ -100,7 +86,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     }
   }
 
-  loadMemoryFromFile(memInside, "src/main/resources/dhrystone/drystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(memInside, "src/main/ramdata/dhrystone/dhrystone.data", MemoryLoadFileType.Hex)
 
   val dataAddr   = Wire(UInt(64.W))
   val dataAddrP1 = Wire(UInt(64.W))
@@ -173,76 +159,3 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
   }
 
 }
-
-
-//class mem_lsu_c extends Bundle {
-//  val data = Output(UInt(32.W)) // 改为32位宽数据
-//}
-//
-//class mem(memDepth: Int, instWidth: Int) extends Module {
-//  val io = IO(new Bundle {
-//    val reset   = Input(Bool())
-//    val if_mem  = Flipped(new if_mem())
-//    val ex_mem  = Flipped(new lsu_mem_c)
-//    val mem_id  = new mem_id(instWidth)
-//    val mem_lsu = new mem_lsu_c
-//  })
-//
-//  // 直接存储32位数据，简化内存结构
-//  val memInside = SyncReadMem(memDepth, UInt(32.W))
-//  loadMemoryFromFile(memInside, ".../.../.../drystone.data", MemoryLoadFileType.Hex)
-//
-//  // 处理字节对齐
-//  val addrAligned = Wire(UInt(64.W))
-//  addrAligned := (io.ex_mem.dataAddr >> 2.U) << 2.U
-//
-//  // 处理不同长度的读取和写入
-//  val byteOffset = io.ex_mem.dataAddr(1, 0)
-//  val byteShift = byteOffset << 3.U
-//
-//  // 字节掩码（用于写入）
-//  val byteMask = Wire(UInt(4.W))
-//  byteMask := MuxLookup(
-//    io.ex_mem.func3,
-//    "b0000".U,
-//    Array(
-//      0.U -> ("b0001".U << byteOffset), // SB
-//      1.U -> ("b0011".U << byteOffset), // SH
-//      2.U -> "b1111".U                  // SW
-//    )
-//  )
-//
-//  // 构建写入数据
-//  val writeData = Wire(UInt(32.W))
-//  writeData := io.ex_mem.writeData << byteShift
-//
-//  // 读取指令
-//  for (i <- 0 until instWidth) {
-//    val fetchAddr = (io.if_mem.instAddr >> 2.U) + i.U
-//    io.mem_id.inst(i) := Mux(io.reset, 0x13.U, memInside.read(fetchAddr))
-//  }
-//
-//  // 读取数据
-//  val readData = memInside.read((io.ex_mem.dataAddr >> 2.U))
-//
-//  // 根据func3处理不同类型的加载
-//  io.mem_lsu.data := MuxLookup(
-//    io.ex_mem.func3,
-//    readData,
-//    Array(
-//      0.U -> Cat(Fill(24, readData(7+(byteShift.asUInt))), readData(7+(byteShift.asUInt), 0+byteShift)),      // LB
-//      1.U -> Cat(Fill(16, readData(15+(byteShift.asUInt))), readData(15+(byteShift.asUInt), 0+byteShift)),    // LH
-//      2.U -> readData,                                                                                         // LW
-//      4.U -> Cat(0.U(24.W), readData(7+(byteShift.asUInt), 0+byteShift)),                                     // LBU
-//      5.U -> Cat(0.U(16.W), readData(15+(byteShift.asUInt), 0+byteShift))                                     // LHU
-//    )
-//  )
-//
-//  // 写入内存
-//  when(io.ex_mem.writeEn) {
-//    val oldData = memInside.read(io.ex_mem.dataAddr >> 2.U)
-//    val newData = (writeData & byteMask.asBools.map(b => Fill(8, b)).reduce(Cat(_, _))) |
-//      (oldData & ~byteMask.asBools.map(b => Fill(8, b)).reduce(Cat(_, _)))
-//    memInside.write(io.ex_mem.dataAddr >> 2.U, newData)
-//  }
-//}
