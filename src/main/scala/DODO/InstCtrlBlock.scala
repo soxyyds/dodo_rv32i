@@ -35,7 +35,7 @@ class InstCtrlBlock extends Bundle{
   val csr_wdata :UInt= UInt(32.W) // 要写入CSR的数据
 
   //BP
-  val bpPredTaken = Bool()
+  val bpPredTaken = Bool()//0为不跳
   val bpPredTarget = UInt(32.W)
   val bppredIndex = UInt(10.W)
 }
@@ -47,7 +47,7 @@ class JumpIssue extends Bundle{
 }
 class BranchIssue extends Bundle{
   val Valid: Bool = Bool()
-//  val proTaken :Bool= Bool()
+  val proTaken :Bool= Bool()
   val actTaken :Bool= Bool()
   val target: UInt = UInt(32.W)
 }

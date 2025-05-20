@@ -40,13 +40,19 @@ class Commit extends Module {
   val CmtBranchJump = (CmtB.isa.Bclass || CmtB.isa.Jclass).asBool
   val Aready = (CmtA.Valid && CmtA.finish).asBool
 
-  io.Rollback := (Aready && (CmtA.jump.Valid || (CmtA.branch.Valid && CmtA.branch.actTaken.asBool))) //给actTaken加了.asBool，把外面的.asBool去掉了
+  val CmtAbranchPredTakenTRUE = CmtA.bpPredTaken === CmtA.branch.actTaken.asBool
+  val CmtAbranchPredTargetTRUE = CmtA.bpPredTarget === CmtA.branch.target
+  val CmtAjumpPredTakenTRUE = CmtA.bpPredTaken
+  val CmtAjumpPredTargetTRUE = CmtA.bpPredTarget === CmtA.jump.actTarget
+  val CmtAbranch_rollback = !CmtAbranchPredTakenTRUE || (CmtAbranchPredTakenTRUE && !CmtAbranchPredTargetTRUE)
+  val CmtAjump_rollback = !CmtAjumpPredTakenTRUE || (CmtAjumpPredTakenTRUE && !CmtAjumpPredTargetTRUE)
+
+  io.Rollback := (Aready && ((CmtA.jump.Valid && CmtAjump_rollback) || (CmtA.branch.Valid && CmtAbranch_rollback))) //给actTaken加了.asBool，把外面的.asBool去掉了
   val CmtBisPrint = (CmtB.inst(6, 0) === "h7b".U(7.W)).asBool
   val CmtBisHalt = (CmtB.inst(6, 0) === "h6b".U(7.W)).asBool
   val CmtBisStore = CmtB.isa.Sclass.asBool
 
   val Bready = (Aready && CmtB.Valid && CmtB.finish && !CmtBranchJump && !io.Rollback && !CmtBisPrint && !CmtBisHalt && !CmtBisStore).asBool
-
   io.CmtA := Mux(Aready, CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
   io.CmtB := Mux(Bready, CmtB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
 
