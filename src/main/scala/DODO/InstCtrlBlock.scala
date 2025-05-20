@@ -33,6 +33,11 @@ class InstCtrlBlock extends Bundle{
   //csrrw
   val csr_addr :UInt= UInt(12.W)  // CSR地址
   val csr_wdata :UInt= UInt(32.W) // 要写入CSR的数据
+
+  //BP
+  val bpPredTaken = Bool()
+  val bpPredTarget = UInt(32.W)
+  val bppredIndex = UInt(10.W)
 }
 class JumpIssue extends Bundle{
   val Valid: Bool = Bool()

@@ -18,7 +18,9 @@ class InstFetch extends Module {
     val Rollback = Input(Bool())    // 分支预测失败回滚
 
     // 指令存储器接口
-    val InstRam = new RAMHelperIO_2
+    val addressout = Output(UInt(64.W)) //指令存储器的地址
+    val Inst_In_A = Input(UInt(32.W)) //指令存储器返回的指令
+    val Inst_In_B = Input(UInt(32.W)) //指令存储器返回的指令
 
     // 分支预测结果(来自 BPU)
     val bpPredTakenA = Input(Bool())//分支预测器返回的 预测结果，表示当前 PC 对应的分支指令是否预测跳转。
@@ -35,13 +37,6 @@ class InstFetch extends Module {
     val RRIFBranchBInfo = Input(new BranchInfo)
     val IFBPBranchAInfo = Output(new BranchInfo)
     val IFBPBranchBInfo = Output(new BranchInfo)
-    // 输出分支预测index到RegRead
-    val BPIFBranchAIdx = Input(UInt(GHR_WIDTH.W))
-    val BPIFBranchBIdx = Input(UInt(GHR_WIDTH.W))
-    val IFRRBranchAIdx = Output(UInt(GHR_WIDTH.W))
-    val IFRRBranchBIdx = Output(UInt(GHR_WIDTH.W))
-    val bpuPCA = Output(UInt(ADDR_WIDTH.W))
-    val bpuPCB = Output(UInt(ADDR_WIDTH.W))
   })
 
   // 初始化与预热逻辑
@@ -52,18 +47,14 @@ class InstFetch extends Module {
 
 
   // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
-  val PC = RegInit("h0000000080000000".U(64.W))
-  val Offset = "h0000000080000000".U(64.W)
-  val Unaligned = PC(2) === 1.U  // 检查 PC 是否未对齐 8 字节
+  val PC = RegInit("h0000000080000000".U(64.W)) // PC 寄存器，初始值为 0x80000000
+
 
 
   // 实现分支预测的板块，优先级:Commit 反馈 > 分支预测 > 默认顺序执行
   when(io.Rollback) {
     // 分支预测失败时，使用 Commit 提供的正确 PC,因为commit里的跳转具有强制性
     PC := Mux(io.CmtA.jump.Valid, io.CmtA.jump.actTarget, io.CmtA.branch.target)
-  }.elsewhen(io.CmtA.jump.Valid) {
-    // Commit 阶段的跳转指令（绝对跳转）
-    PC := io.CmtA.jump.actTarget
   }.elsewhen(io.CmtA.branch.Valid && (io.CmtA.branch.actTaken).asBool) {
     // Commit 阶段的分支指令（条件分支且实际跳转）
     PC := io.CmtA.branch.target
@@ -76,36 +67,22 @@ class InstFetch extends Module {
       }.elsewhen(io.bpPredTakenB) {
         PC := io.bpPredTargetB
       }.otherwise {
-        when(Unaligned) {
-          PC := PC + 4.U
-        } .otherwise {
           PC := PC + 8.U
         }
       }
     }
-  }
   // 注：此处A优先，B预测跳转仅在A未跳转时生效。
 
-  // ------------------ 指令存储器访问（保持不变） ------------------
-  //在这个部分是获取对应的信息的地方
-  io.InstRam.clk := clock
-  io.InstRam.inst_gain_en := ENABLE
-  io.InstRam.inst_address := Cat(0.U(3.W), (PC - Offset)(63,3))
-  io.InstRam.data_address := 0.U
-  io.InstRam.data_wdata := 0.U
-  //io.InstRam.data_rdata := 0.U
-  io.InstRam.data_wen := false.B//其他多余的信号需要初始化废弃掉
-
-
   // ------------------ 指令拆分与输出逻辑（保持不变） ------------------
-  val ValidA = Mux(Unaligned, ENABLE, ENABLE)//enable控制了指令是否需要取
-  val ValidB = Mux(Unaligned, false.B, ENABLE)
-  val InstA = Mux(Unaligned, io.InstRam.inst_data(1), io.InstRam.inst_data(0))
-  val InstB = Mux(Unaligned, 0.U(32.W), io.InstRam.inst_data(1))//这里虽然没有直接受enable控制，但是实际上pc没有动，每次取得的inst还是一样
-  val PCA = Mux(Unaligned, PC, PC)
-  val PCB = Mux(Unaligned, 0.U(64.W), PC + 4.U)
-  io.bpuPCA := PCA
-  io.bpuPCB := PCB
+  val ValidA =ENABLE
+  val ValidB = Mux(io.bpPredTakenA, false.B, ENABLE)
+  val InstA = io.Inst_In_A
+  val InstB = Mux(io.bpPredTakenA, false.B, io.Inst_In_B)
+  val PCA = PC
+  val PCB = PC + 4.U
+
+  io.addressout := PC
+
 
   when(io.Rollback) {
     io.IFIDA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -143,25 +120,8 @@ class InstFetch extends Module {
   }
 }
 
-class RAMHelperIO extends Bundle{
-  val clk = Output(Clock())//时钟
-  val en = Output(Bool())//使能
-  val rIdx = Output(UInt(64.W))//读地址索引(important)
-  val rdata = Input(UInt(64.W))//读数据(important)
-  //写端口（取指无需使用）
-  val wIdx = Output(UInt(64.W))
-  val wdata = Output(UInt(64.W))
-  val wmask = Output(UInt(64.W))
-  val wen = Output(Bool())
-}//在这个地方传给后面instfetch其实是一个指令是否有效（因为有些指令传一个 另一些传两条）
-//然后还有指令的具体32位值 还有其指令的64位pc的地址 Valid: Bool, inst: UInt, pc: UInt 这三个信息是从内存mem里面获取的
 
 class RAMHelperIO_2 extends Bundle {
-  // 基础时钟
-  val clk = Output(Clock())
-  // 指令读取端口
-  val inst_en = Input(Bool())
-  val inst_gain_en    = Output(Bool())//从内存里面获取对应的指令的使能信号
   val inst_address = Output(UInt(64.W))//用于检索的地址
   val inst_data  = Input(Vec(2, UInt(32.W))) // 返回双指令。双指令的riscv指令
   //数据读取端口
