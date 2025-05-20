@@ -39,6 +39,13 @@ class InstFetch extends Module {
     val IFBPBranchBInfo = Output(new BranchInfo)
   })
 
+  io.IFBPBranchAInfo := io.RRIFBranchAInfo
+  io.IFBPBranchBInfo := io.RRIFBranchBInfo
+  io.IFRRBranchAIdx := io.BPIFBranchAIdx
+  io.IFRRBranchBIdx := io.BPIFBranchBIdx
+
+
+
   // 初始化与预热逻辑
   val Warmup = RegInit(0.U(3.W))
   when(Warmup === 4.U) { Warmup := 4.U }
