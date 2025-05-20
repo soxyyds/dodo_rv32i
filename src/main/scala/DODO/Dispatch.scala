@@ -12,7 +12,7 @@ class dispatch extends Module{
     val out_B = Output(new InstCtrlBlock)
     val out_C = Output(new InstCtrlBlock)
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
-    //在这里面需要建立两个保留站reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
+    //在这里面需要建立两个发射队列reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
     val regstate = Input(UInt(128.W))
     val enable = Output(Bool())
@@ -114,10 +114,10 @@ class intquene extends Module{
     }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstCtrlBlock()))}
   }
   //这个是用于阻塞判断的，从而避免满状态的出现
-  freelist_A := genfreelist_A()
-  freelist_B := freelist_A - lowbit(freelist_A)
-  in_point_A := Log2(lowbit(freelist_A))
-  in_point_B := Log2(lowbit(freelist_B))
+//  freelist_A := genfreelist_A()
+//freelist_B := freelist_A - lowbit(freelist_A)
+//  in_point_A := Log2(lowbit(freelist_A))
+ // in_point_B := Log2(lowbit(freelist_B))
   io.intfull := (in_point_A === 0.U)||(in_point_B === 0.U)
 }
 //2：访存保留站

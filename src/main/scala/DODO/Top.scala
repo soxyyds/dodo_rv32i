@@ -107,7 +107,6 @@ class Top extends Module{
   Commit.io.ForwardStore <> Memory.io.ForwardStore
 
   // IO
-  io.InstRam <> InstFetch.io.InstRam
   io.DataRam <> Memory.io.DataRam
 
   // CSR寄存器定义
@@ -133,24 +132,18 @@ class TopWithMemory extends Module {
   val io = IO(new Bundle {
     // 可以保留原有的外部接口，或者根据需要调整
   })
-  val cpu = Module(new Top)//实例化CPU，然后把内存和CPU连接在一起
-  val memory = Module(new mem(memDepth = 1024, instWidth = 2))//这时候已经制定了每次取两条
-
+  val cpu = Module(new Top)//实例化CPU，然后把内存和CPU连接在一
+  val data_memory  = Module(new mem(memDepth = 1024, instWidth = 2))
   //我们应该用的架构是哈佛架构 就是访存和取指是两条通路
   //取指块最重要的是把指令拿回来
-  cpu.io.InstRam.inst_en := !reset.asBool //决定了是否要运行
-  memory.io.if_mem.instAddr := cpu.io.InstRam.inst_address//传入了检索的地址
-  cpu.io.InstRam.inst_data := memory.io.mem_id.inst
-
   //下面是访存块
-  memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen//写入的控制信号
-  memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
-  memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata//这个传进去的是地址和数据
+  data_memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen//写入的控制信号
+  data_memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
+  data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata//这个传进去的是地址和数据
   //然后是读的部分
-  cpu.io.DataRam.data_rdata := memory.io.mem_lsu.data
-  memory.io.ex_mem.func3 := cpu.io.DataRam.func3
+  cpu.io.DataRam.data_rdata := data_memory.io.mem_lsu.data
+  data_memory.io.ex_mem.func3 := cpu.io.DataRam.func3
   //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
   //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
-  //memory.io.ex_mem.atomFlag   := cpu.io.DataRam.atomic_op
 
 }

@@ -81,16 +81,11 @@ class Memory extends Module {
   val INST = RegNext(io.EXMEM)
 
   // === 2. RAM 接口地址转换 ===
-  val Offset = 0x80000000L.U(64.W)
-  io.DataRam.inst_gain_en := false.B//初始化好所有的信号
-  io.DataRam.inst_data := 0.U.asTypeOf(Vec(2, UInt(32.W)))
-  io.DataRam.inst_address := 0.U.asTypeOf(UInt(64.W))//为了保持接口的一致性 此处需要都初始化好相应的信号
   //其实我们不用管mem模块里面到底有多少的信号和输出端口 我们只要关注好我们这个哈佛架构的管道到底要多少信号
-  io.DataRam.clk := clock
   io.DataRam.data_wen  := (io.CmtA.Valid && io.CmtA.store.Valid)
-  io.DataRam.data_address := Cat(0.U(3.W), (INST.load.addr - Offset)(63,3))
+  io.DataRam.data_address := INST.load.addr
   io.DataRam.data_wdata := io.CmtA.store.data //获取要存入里面的数据
-  io.DataRam.func3 := io.CmtA.store.mask//获取掩码 mask
+  io.DataRam.func3 := io.CmtA.store.mask//获取掩码 mask掩码要修改，这个mask是在execute里面生成的
 
   // === 3. Store Forwarding 拼接逻辑 ===
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))

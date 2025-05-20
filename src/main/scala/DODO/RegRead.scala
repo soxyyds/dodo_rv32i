@@ -43,7 +43,7 @@ class RegRead extends Module{
   val INSTB = RegNext(io.DPRRB)
   val INSTC = RegNext(io.DPRRC)
 
-  val PhyRegFile = new AbstractRegBank(32,32)
+  val PhyRegFile = new AbstractRegBank(128,32)
 
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
@@ -59,21 +59,21 @@ class RegRead extends Module{
   val FinD_wbdata_reg = RegNext(io.FinD.wbdata)
   val FinE_wbdata_reg = RegNext(io.FinE.wbdata)
 
-  // 调用 write 方法时，使用中间寄存器
+  // 调用 write 方法时，使用中间寄存器,在这里写了
   PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, Mux(io.FinA.Valid, FinA_wbdata_reg, 0.U))
   PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, Mux(io.FinB.Valid, FinB_wbdata_reg, 0.U))
   PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, Mux(io.FinC.Valid, FinC_wbdata_reg, 0.U))
   PhyRegFile.write(io.FinD.Valid && io.FinD.finish, io.FinD.pregdes, Mux(io.FinD.Valid, FinD_wbdata_reg, 0.U))
   PhyRegFile.write(io.FinE.Valid && io.FinE.finish, io.FinE.pregdes, Mux(io.FinE.Valid, FinE_wbdata_reg, 0.U))
 
-  val BJU1 = Module(new BranchJumpUnit)
+  val BJU1 = Module(new BranchJumpUnit)//计算跳转的地址
   BJU1.io.isa <> INSTA.isa
   BJU1.io.pc <> INSTA.pc
   BJU1.io.src1 <> src1
   BJU1.io.src2 <> src2
   BJU1.io.imm <> INSTA.imm
 
-  val BJU2 = Module(new BranchJumpUnit)
+  val BJU2 = Module(new BranchJumpUnit)//
   BJU2.io.isa <> INSTB.isa
   BJU2.io.pc <> INSTB.pc
   BJU2.io.src1 <> src3
@@ -223,6 +223,6 @@ class BranchJumpUnit extends Module{
   //获取并综合分支信息
   io.branch.Valid := io.isa.BEQ || io.isa.BNE || io.isa.BGEU || io.isa.BLTU || io.isa.BGE || io.isa.BLT
   io.branch.actTaken := beq || bne || bgeu || bltu || bge || blt
-  io.branch.target := b_target
+  io.branch.target := b_target//
 
 }

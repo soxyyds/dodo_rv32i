@@ -180,17 +180,14 @@ class AddressGenerationUnit extends Module{
   val SH_data = io.isa.SH & Cat(Fill(16, io.src2(15)), io.src2(15,0))
   val SB_data = io.isa.SB & Cat(Fill(24, io.src2(7)), io.src2(7,0))
   io.store.data := SW_data | SH_data | SB_data
-  val byte_mask = MuxCase(0.U(4.W), Seq(
-    io.isa.SW -> "b1111".U(4.W),
-    io.isa.SH -> ("b11".U << io.store.addr(1,0))(3,0),
-    io.isa.SB -> ("b1".U << io.store.addr(1,0))(3,0)
-  ))
-  io.store.mask := Cat(
-    Fill(8, byte_mask(3)),
-    Fill(8, byte_mask(2)),
-    Fill(8, byte_mask(1)),
-    Fill(8, byte_mask(0))
-  )
+  val byte_mask = Wire(UInt(3.W)) // 3位掩码编码
+  when(io.isa.SW) {
+    byte_mask := 2.U  // SW指令编码为2
+  }.elsewhen(io.isa.SH) {
+    byte_mask := 1.U  // SH指令编码为1
+  }.otherwise {       // SB指令
+    byte_mask := 0.U  // SB指令编码为0
+  }
+  io.store.mask := byte_mask
   io.store.Ready := false.B
-
-}
+}//AGU

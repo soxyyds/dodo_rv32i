@@ -27,7 +27,7 @@ class RegMap extends Module{
     val num_A =Input (UInt(6.W))
     val num_B =Input (UInt(6.W))//重排序缓冲区编号
     val regstate : UInt = Output (UInt(128.W))//记录了128个寄存器的空闲状态
-    val regvalues : Vec[UInt]= Output (Vec(32,UInt(64.W)))
+    val regvalues : Vec[UInt]= Output (Vec(32,UInt(32.W)))
   })
   val reg_A:InstCtrlBlock =RegEnable(io.in_A,io.enable)//根据使能信号生成流水线寄存器
   val reg_B:InstCtrlBlock =RegEnable(io.in_B,io.enable)
