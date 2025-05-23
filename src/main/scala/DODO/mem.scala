@@ -14,7 +14,6 @@ class mem_id(val instWidth: Int) extends Bundle {
 }//指令获取
 
 class lsu_mem_c extends Bundle {
-  val atomFlag  = Output(Bool())
   val dataAddr  = Output(UInt(64.W))
   val writeEn   = Output(Bool())
   val writeData = Output(UInt(32.W))
@@ -27,7 +26,7 @@ class mem_lsu_c extends Bundle {
 
 class mem(memDepth: Int, instWidth: Int) extends Module {
   val io = IO(new Bundle {
-    val reset   = Input(Bool())
+//    val reset   = Input(Bool())
     val if_mem  = Flipped(new if_mem())
     val ex_mem  = Flipped(new lsu_mem_c)
     val mem_id  = new mem_id(instWidth)
@@ -87,7 +86,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
   for (i <- 0 until instWidth) {
     val byteVec = memInside.read(io.if_mem.instAddr + i.U)
     // 从最高位字节开始拼接
-    io.mem_id.inst(i) := Mux(io.reset, 0x13.U, Cat(byteVec(3), byteVec(2), byteVec(1), byteVec(0)))
+    io.mem_id.inst(i) := Mux(reset.asBool, 0x13.U, Cat(byteVec(3), byteVec(2), byteVec(1), byteVec(0)))
   }//指令读取部分，然后每次都读取的是64位连续的数据，最后是拼接在一起了
   //reduce((acc, elem) => Cat(elem, acc))逐渐合并，不可取然后我直接一次性拼接，这样的话保证了组合逻辑零延迟
   io.mem_lsu.data :=   memInside.read(dataAddr).asUInt//直接取出来

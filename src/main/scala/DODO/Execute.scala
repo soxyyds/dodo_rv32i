@@ -25,6 +25,7 @@ class Execute extends Module{
   ALU1.io.src1 <> INSTA.src1
   ALU1.io.src2 <> INSTA.src2
   ALU1.io.imm <> INSTA.imm
+  ALU1.io.csr_rdata <> INSTA.wbdata // 来自CSR的读数据
 
   val ALU2 = Module(new ArithmeticLogicalUnit)
   ALU2.io.isa <> INSTB.isa
@@ -32,6 +33,8 @@ class Execute extends Module{
   ALU2.io.src1 <> INSTB.src1
   ALU2.io.src2 <> INSTB.src2
   ALU2.io.imm <> INSTB.imm
+  ALU2.io.csr_rdata <> INSTB.wbdata // 来自CSR的读数据
+
 
   val agu = Module(new AddressGenerationUnit)
   agu.io.isa <> INSTC.isa
@@ -72,6 +75,11 @@ class Execute extends Module{
     ICB.branch := RREX.branch
     ICB.load := load
     ICB.store := store
+    ICB.csr_addr := RREX.csr_addr
+    ICB.csr_wdata := RREX.csr_wdata
+    ICB.bpPredTaken := RREX.bpPredTaken
+    ICB.bpPredTarget := RREX.bpPredTarget
+    ICB.bppredIndex := RREX.bppredIndex
     ICB
   }
 
@@ -98,6 +106,11 @@ class Execute extends Module{
     ICB.branch := RREX.branch
     ICB.load := RREX.load
     ICB.store := RREX.store
+    ICB.csr_addr := RREX.csr_addr
+    ICB.csr_wdata := RREX.csr_wdata
+    ICB.bpPredTaken := RREX.bpPredTaken
+    ICB.bpPredTarget := RREX.bpPredTarget
+    ICB.bppredIndex := RREX.bppredIndex
     ICB
   }
 

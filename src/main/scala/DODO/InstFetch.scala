@@ -87,18 +87,13 @@ class InstFetch extends Module {
     io.IFIDA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     io.IFIDB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }.otherwise {
-    io.IFIDA := GenICB(ValidA, InstA, PCA)
-    io.IFIDB := GenICB(ValidB, InstB, PCB)
-    io.IFIDA.bppredIndex := Bp.io.pred_index_0
-    io.IFIDB.bppredIndex := Bp.io.pred_index_1
-    io.IFIDA.bpPredTaken := Bp.io.pred_taken_0
-    io.IFIDB.bpPredTaken := Bp.io.pred_taken_1
-    io.IFIDA.bpPredTarget := Bp.io.pred_target_0
-    io.IFIDB.bpPredTarget := Bp.io.pred_target_1
+    io.IFIDA := GenICB(ValidA, InstA, PCA,Bp.io.pred_taken_0, Bp.io.pred_index_0, Bp.io.pred_target_0)
+    io.IFIDB := GenICB(ValidB, InstB, PCB, Bp.io.pred_taken_1, Bp.io.pred_index_1, Bp.io.pred_target_1)
+
   }
 
   //实际上只生成了指令控制块生成函数,构造一个空的指令控制块(InstCtrlBlock),仅填充有效位、指令内容和 PC,其余字段由后续流水线阶段赋值。
-  def GenICB(Valid: Bool, inst: UInt, pc: UInt): InstCtrlBlock = {
+  def GenICB(Valid: Bool, inst: UInt, pc: UInt, pred_index:UInt, pred_taken:UInt, pred_target:UInt): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
     ICB.Valid := Valid//有效位
     ICB.inst := inst//指令内容
@@ -123,14 +118,16 @@ class InstFetch extends Module {
     ICB.store := WireInit(0.U.asTypeOf(new StoreIssue()))
     ICB.csr_addr := 0.U
     ICB.csr_wdata := 0.U
+    //分支预测相关
+    ICB.bpPredTaken := pred_taken
+    ICB.bpPredTarget := pred_target
+    ICB.bppredIndex := pred_index
     ICB
   }
 }
 
 
 class RAMHelperIO_2 extends Bundle {
-  val inst_address = Output(UInt(64.W))//用于检索的地址
-  val inst_data  = Input(Vec(2, UInt(32.W))) // 返回双指令。双指令的riscv指令
   //数据读取端口
   // 读取数据，存储器返回的读取的数据，就是说这些load取出来的数据
    // 指令地址（字节地址），输出当前需要读取的指令地址（字节地址）

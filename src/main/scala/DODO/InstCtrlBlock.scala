@@ -47,7 +47,7 @@ class JumpIssue extends Bundle{
 }
 class BranchIssue extends Bundle{
   val Valid: Bool = Bool()
-  val proTaken :Bool= Bool()
+//  val proTaken :Bool= Bool()
   val actTaken :Bool= Bool()
   val target: UInt = UInt(64.W)
 }

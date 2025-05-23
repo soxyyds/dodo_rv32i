@@ -204,6 +204,11 @@ class RegMap extends Module{
     inst_end.branch := inst_in.branch
     inst_end.load := inst_in.load
     inst_end.store := inst_in.store
+    inst_end.bpPredTaken := inst_in.bpPredTaken
+    inst_end.bpPredTarget := inst_in.bpPredTarget
+    inst_end.bppredIndex := inst_in.bppredIndex
+    inst_end.csr_addr := inst_in.csr_addr
+    inst_end.csr_wdata := inst_in.csr_wdata
     inst_end
   }
   object lowbit {

@@ -134,6 +134,9 @@ class RegRead extends Module{
     ICB.store := DPRR.store
     ICB.csr_addr := DPRR.csr_addr
     ICB.csr_wdata := src1
+    ICB.bpPredTaken := DPRR.bpPredTaken
+    ICB.bpPredTarget := DPRR.bpPredTarget
+    ICB.bppredIndex := DPRR.bppredIndex
     ICB    //返回值，将生成的指令信息返回给调用者
   }
 
@@ -163,6 +166,9 @@ class RegRead extends Module{
     ICB.store := RREX.store
     ICB.csr_addr := RREX.csr_addr
     ICB.csr_wdata := 0.U
+    ICB.bpPredTaken := RREX.bpPredTaken
+    ICB.bpPredTarget := RREX.bpPredTarget
+    ICB.bppredIndex := RREX.bppredIndex
     ICB
   }
 }

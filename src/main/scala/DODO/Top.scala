@@ -132,6 +132,7 @@ class TopWithMemory extends Module {
   //然后是读的部分
   cpu.io.DataRam.data_rdata := data_memory.io.mem_lsu.data
   data_memory.io.ex_mem.func3 := cpu.io.DataRam.func3
+
   //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
   //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
 }
