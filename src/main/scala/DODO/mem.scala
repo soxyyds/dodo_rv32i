@@ -26,104 +26,122 @@ class mem_lsu_c extends Bundle {
 
 class mem(memDepth: Int, instWidth: Int) extends Module {
   val io = IO(new Bundle {
-//    val reset   = Input(Bool())
+    val reset   = Input(Bool())
     val if_mem  = Flipped(new if_mem())
     val ex_mem  = Flipped(new lsu_mem_c)
     val mem_id  = new mem_id(instWidth)
     val mem_lsu = new mem_lsu_c
-  })//实例化的是这个模块
+  })
 
-  val memInside = Mem(memDepth, Vec(4, UInt(8.W)))//每个字节存入8bite的数据，异步时序，因此这个专门用于读取指令
-  //  var memAddrDiff = Wire(UInt(2.W))
-  //  for (i <- 0 to 3) {
-  //    val memAddrDiff = i - io.ex_mem.dataAddr(1,0).litValue().toInt
-  //    if (i >= io.ex_mem.dataAddr(1,0).litValue().toInt) {
-  //      memWriteVec(i) := io.ex_mem.writeData(memAddrDiff * 8 + 8, memAddrDiff * 8)
-  //    } else {
-  //      memWriteVec(i) := io.ex_mem.writeData((32 - memAddrDiff * 8) + 8, 32 - memAddrDiff * 8)
-  //    }
-  //  }
+  val memInside = Mem(memDepth, Vec(4, UInt(8.W)))
 
-  val memWriteVec  = Wire(Vec(4, UInt(8.W)))//用于储存写入数据
-  for (i <- 0 to 3) {
-    memWriteVec(i)  := io.ex_mem.writeData(i * 8 + 7, i * 8)
-  }//32位数据分割写入
-  (0 until 8).map(_.asUInt)
-  switch(io.ex_mem.dataAddr(1, 0)) {
-    is(1.U) {
-      for (i <- 0 to 2) {
-        memWriteVec(i + 1)  := io.ex_mem.writeData(i * 8 + 7, i * 8)
-      }
-      for (i <- 0 to 0) {
-        memWriteVec(i)  := io.ex_mem.writeData((i + 3) * 8 + 7, (i + 3) * 8)
-      }
-    }
-    is(2.U) {
-      for (i <- 0 to 1) {
-        memWriteVec(i + 2)  := io.ex_mem.writeData(i * 8 + 7, i * 8)
-      }
-      for (i <- 0 to 1) {
-        memWriteVec(i)  := io.ex_mem.writeData((i + 2) * 8 + 7, (i + 2) * 8)
-      }
-    }
-    is(3.U) {
-      for (i <- 0 to 0) {
-        memWriteVec(i + 3)  := io.ex_mem.writeData(i * 8 + 7, i * 8)
-      }
-      for (i <- 0 to 2) {
-        memWriteVec(i)  := io.ex_mem.writeData((i + 1) * 8 + 7, (i + 1) * 8)
-      }
-    }
-  }//根据地址低2位处理非对齐存储
+  // 只定义32位写入缓冲区
+  val memWriteVec = Wire(Vec(4, UInt(8.W)))
 
-  loadMemoryFromFile(memInside, "src/main/ramdata/dhrystone/dhrystone.data", MemoryLoadFileType.Hex)//这里是不是可以做成一个哈佛架构
+  // 1. 首先基于地址对齐方式重排数据字节顺序
+  val alignedData = Wire(UInt(32.W))
+  alignedData := MuxLookup(io.ex_mem.dataAddr(1, 0), io.ex_mem.writeData, Seq(
+    0.U -> io.ex_mem.writeData,
+    1.U -> Cat(io.ex_mem.writeData(23, 0), io.ex_mem.writeData(31, 24)),
+    2.U -> Cat(io.ex_mem.writeData(15, 0), io.ex_mem.writeData(31, 16)),
+    3.U -> Cat(io.ex_mem.writeData(7, 0), io.ex_mem.writeData(31, 8))
+  ))
 
-  val dataAddr   = Wire(UInt(64.W))
-  val dataAddrP1 = Wire(UInt(64.W))
-  dataAddr   := io.ex_mem.dataAddr >> 2.U
-  dataAddrP1 := dataAddr + 1.U//需要转换,为了处理非4对齐的情况
+  // 2. 拆分对齐后的数据
+  for (i <- 0 until 4) {
+    memWriteVec(i) := alignedData(i*8+7, i*8)
+  }
 
+  loadMemoryFromFile(memInside, "C:\\Users\\Lenovo\\Desktop\\Code\\dodo_rv32i\\src\\main\\dhrystone\\ramdata\\dhrystone.data", MemoryLoadFileType.Hex)
+
+  // 内存地址计算（字对齐）
+  val dataAddr   = Wire(UInt(32.W))
+  val dataAddrP1 = Wire(UInt(32.W))
+  dataAddr   := io.ex_mem.dataAddr(31,0) >> 2.U
+  dataAddrP1 := dataAddr + 1.U
+
+  // 关键修改点2: 指令读取逻辑改为组合读
   for (i <- 0 until instWidth) {
-    val byteVec = memInside.read(io.if_mem.instAddr + i.U)
-    // 从最高位字节开始拼接
-    io.mem_id.inst(i) := Mux(reset.asBool, 0x13.U, Cat(byteVec(3), byteVec(2), byteVec(1), byteVec(0)))
-  }//指令读取部分，然后每次都读取的是64位连续的数据，最后是拼接在一起了
-  //reduce((acc, elem) => Cat(elem, acc))逐渐合并，不可取然后我直接一次性拼接，这样的话保证了组合逻辑零延迟
-  io.mem_lsu.data :=   memInside.read(dataAddr).asUInt//直接取出来
+    io.mem_id.inst(i) := Mux(
+      io.reset,
+      0x13.U,  // NOP指令
+      memInside(io.if_mem.instAddr(31,0) + i.U).reduce((acc, elem) => Cat(elem, acc))
+    )
+  }
 
-  val memChoose0 = Wire(Vec(4, Bool()))
-  val memChoose1 = Wire(Vec(4, Bool()))
-  for (i <- 0 to 3) {
-    memChoose0(i) := false.B
-    memChoose1(i) := false.B
-  }//每次都初始化
+  // 关键修改点3: 数据读取改为组合读
+  val rawData = memInside(dataAddr).reduce((acc, elem) => Cat(elem, acc))
+
+  // 根据地址低2位选择对应字节位置（修正后）
+  val alignedWord = MuxLookup(io.ex_mem.dataAddr(1, 0), rawData, Seq(
+    0.U -> rawData,
+    1.U -> Cat(rawData(7, 0), rawData(31, 8)),   // 正确取出15:8位到低8位
+    2.U -> Cat(rawData(15, 0), rawData(31, 16)), // 保持不变
+    3.U -> Cat(rawData(23, 0), rawData(31, 24))  // 保持不变
+  ))
+
+  // 根据func3进行数据宽度处理和符号扩展
+  val processedData = Wire(UInt(32.W))
+  // 首先提供默认值
+  processedData := 0.U
+
+  // 然后根据func3重载
   switch(io.ex_mem.func3) {
-    is(0.U) { // SB
-      memChoose0(io.ex_mem.dataAddr(1, 0)) := true.B//这个相当于加上了使能信号
+    is(0.U) { // LB - 带符号扩展的字节加载
+      processedData := Cat(Fill(24,0.U), alignedWord(7, 0))
     }
-    is(1.U) { // SH
-      when(io.ex_mem.dataAddr(1, 0) =/= 3.U) {
-        memChoose0(io.ex_mem.dataAddr(1, 0))       := true.B
-        memChoose0(io.ex_mem.dataAddr(1, 0) + 1.U) := true.B
+    is(1.U) { // LH - 带符号扩展的半字加载
+      processedData := Cat(Fill(16, 0.U), alignedWord(15, 0))
+    }
+    is(2.U) { // LW - 字加载
+      processedData := alignedWord
+    }
+  }
+
+  // 将处理后的数据输出
+  io.mem_lsu.data := processedData
+
+  // 内存写入掩码生成
+  val memChoose = Wire(Vec(4, Bool()))
+  for (i <- 0 to 3) {
+    memChoose(i) := false.B
+  }
+
+  // 根据func3确定写入掩码
+  switch(io.ex_mem.func3) {
+    is(0.U) { // SB - 字节写入
+      memChoose(io.ex_mem.dataAddr(1, 0)) := true.B
+    }
+    is(1.U) { // SH - 半字写入
+      when(io.ex_mem.dataAddr(1, 0) === 0.U) {
+        memChoose(0) := true.B
+        memChoose(1) := true.B
+      }.elsewhen(io.ex_mem.dataAddr(1, 0) === 1.U) {
+        memChoose(1) := true.B
+        memChoose(2) := true.B
+      }.elsewhen(io.ex_mem.dataAddr(1, 0) === 2.U) {
+        memChoose(2) := true.B
+        memChoose(3) := true.B
       }.otherwise {
-        memChoose0(3) := true.B
-        memChoose1(0) := true.B
+        memChoose(3) := true.B
+        // 跨边界情况在32位系统中需特殊处理
       }
     }
-    is(2.U) { // SW
-      memChoose0(0) := Mux(io.ex_mem.dataAddr(1, 0) === 0.U, true.B, false.B)
-      memChoose0(1) := Mux(io.ex_mem.dataAddr(1, 0) <= 1.U, true.B, false.B)
-      memChoose0(2) := Mux(io.ex_mem.dataAddr(1, 0) <= 2.U, true.B, false.B)
-      memChoose0(3) := Mux(io.ex_mem.dataAddr(1, 0) <= 3.U, true.B, false.B)
-      memChoose1(0) := Mux(io.ex_mem.dataAddr(1, 0) >= 1.U, true.B, false.B)
-      memChoose1(1) := Mux(io.ex_mem.dataAddr(1, 0) >= 2.U, true.B, false.B)
-      memChoose1(2) := Mux(io.ex_mem.dataAddr(1, 0) >= 3.U, true.B, false.B)
+    is(2.U) { // SW - 字写入
+      memChoose(0) := true.B
+      memChoose(1) := true.B
+      memChoose(2) := true.B
+      memChoose(3) := true.B
     }
-  }//为了分三类来对齐处理
+  }
 
-  when(io.ex_mem.writeEn ) {
-      memInside.write(dataAddr, memWriteVec, memChoose0)
-      memInside.write(dataAddrP1, memWriteVec, memChoose1)
-  }//隐式时钟同步
-
+  // 执行内存写入
+  when(io.ex_mem.writeEn) {
+    // 监控特定地址的写入
+    when(io.ex_mem.dataAddr === "h1001ff1".U) {
+      val char = io.ex_mem.writeData(7, 0).asUInt
+      printf("%c", char)  // 只打印对应字符
+    }
+    memInside.write(dataAddr, memWriteVec, memChoose)
+  }
 }

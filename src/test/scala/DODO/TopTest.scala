@@ -8,7 +8,7 @@ class TopWithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
   behavior of "TopWithMemory"
 
   it should "执行DHRYSTONE基准测试" in {
-    test(new TopWithMemory).withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
+    test(new TopWithMemory) { dut =>
       // 重要：需要确保mem.scala中加载了正确的dhrystone.data文件
 
       // 打印开始信息
