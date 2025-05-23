@@ -207,3 +207,15 @@ object ZeroExt {
     if(aLen >= len) a(len-1,0) else Cat(0.U((len - aLen).W), a)
   }
 }
+
+// 添加Verilog生成对象
+object IDVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new InstDecode(),
+    args = Array(
+      "-o", "InstDecode.v",
+      "--target-dir", "generated/InstDecode",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}

@@ -171,3 +171,38 @@ object lowbit {
 }
 
 
+// 添加Verilog生成对象
+object DispatchVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new dispatch(),
+    args = Array(
+      "-o", "Dispatch.v",
+      "--target-dir", "generated/Dispatch",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}
+
+// 为保留站模块添加Verilog生成对象
+object QueneVerilog extends App {
+  // 生成整形保留站的Verilog
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new intquene(),
+    args = Array(
+      "-o", "int_quene.v",
+      "--target-dir", "generated/Dispatch",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+
+  // 生成访存保留站的Verilog
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new memquene(),
+    args = Array(
+      "-o", "mem_quene.v",
+      "--target-dir", "generated/Dispatch",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}
+

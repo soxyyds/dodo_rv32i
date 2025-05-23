@@ -141,3 +141,15 @@ class RAMHelperIO_2 extends Bundle {
   val data_rdata  = Input(UInt(64.W))//读取的使能信号是受dataAddr 和 func3 有效和wen信号控制的
   // 原子操作标志
 }
+
+// 添加Verilog生成对象
+object IFVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new InstFetch(),
+    args = Array(
+      "-o", "InstFetch.v",
+      "--target-dir", "generated/InstFetch",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}

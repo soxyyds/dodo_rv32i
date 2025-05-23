@@ -119,3 +119,15 @@ object CyclicShiftRight {
     ((vec << (64.U - n))(63, 0) | (vec >> n)(63, 0))
   }
 }
+
+// 添加Verilog生成对象
+object CommitVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new Commit(),
+    args = Array(
+      "-o", "commit.v",
+      "--target-dir", "generated/commit",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}

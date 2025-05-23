@@ -204,3 +204,15 @@ class AddressGenerationUnit extends Module{
   io.store.mask := byte_mask
   io.store.Ready := false.B
 }//AGU
+
+// 添加Verilog生成对象
+object ExecuteVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new Execute(),
+    args = Array(
+      "-o", "Execute.v",
+      "--target-dir", "generated/Execute",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}

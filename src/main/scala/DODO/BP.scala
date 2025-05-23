@@ -195,3 +195,15 @@ class BranchPredictor extends Module {
   pht.io.update_index := io.ex_pred_index
   pht.io.update_taken := io.ex_is_taken
 }
+
+// 添加Verilog生成对象
+object BranchPredictorVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new BranchPredictor(),
+    args = Array(
+      "-o", "branch_predictor.v",  // 输出文件名
+      "--target-dir", "generated/branch_predictor"
+    )
+  )
+}
+

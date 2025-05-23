@@ -145,3 +145,15 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     memInside.write(dataAddr, memWriteVec, memChoose)
   }
 }
+
+// 添加Verilog生成对象
+object memVerilog extends App {
+  (new chisel3.stage.ChiselStage).emitVerilog(
+    new mem(),
+    args = Array(
+      "-o", "mem.v",
+      "--target-dir", "generated/mem",
+      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+    )
+  )
+}
