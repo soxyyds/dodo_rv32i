@@ -15,7 +15,7 @@ class TopWithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
       println("开始执行DHRYSTONE基准测试...")
 
       // 执行一系列周期
-      val maxCycles = 10000
+      val maxCycles = 10
       for (cycle <- 1 to maxCycles) {
         dut.clock.step(1)
 

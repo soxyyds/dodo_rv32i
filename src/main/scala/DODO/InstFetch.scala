@@ -89,6 +89,12 @@ class InstFetch extends Module {
   }.otherwise {
     io.IFIDA := GenICB(ValidA, InstA, PCA)
     io.IFIDB := GenICB(ValidB, InstB, PCB)
+    io.IFIDA.bppredIndex := Bp.io.pred_index_0
+    io.IFIDB.bppredIndex := Bp.io.pred_index_1
+    io.IFIDA.bpPredTaken := Bp.io.pred_taken_0
+    io.IFIDB.bpPredTaken := Bp.io.pred_taken_1
+    io.IFIDA.bpPredTarget := Bp.io.pred_target_0
+    io.IFIDB.bpPredTarget := Bp.io.pred_target_1
   }
 
   //实际上只生成了指令控制块生成函数,构造一个空的指令控制块(InstCtrlBlock),仅填充有效位、指令内容和 PC,其余字段由后续流水线阶段赋值。
@@ -115,6 +121,8 @@ class InstFetch extends Module {
     ICB.branch := WireInit(0.U.asTypeOf(new BranchIssue()))
     ICB.load := WireInit(0.U.asTypeOf(new LoadIssue()))
     ICB.store := WireInit(0.U.asTypeOf(new StoreIssue()))
+    ICB.csr_addr := 0.U
+    ICB.csr_wdata := 0.U
     ICB
   }
 }
