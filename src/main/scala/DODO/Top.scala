@@ -116,23 +116,28 @@ class Top extends Module{
 
 class TopWithMemory extends Module {
   val io = IO(new Bundle {
-    // 可以保留原有的外部接口，或者根据需要调整
+    // 新增调试输出端口
+    val pc = Output(UInt(64.W))        // 暴露PC值
+    val instA = Output(UInt(32.W))     // 暴露第一条指令
+    val instB = Output(UInt(32.W))     // 暴露第二条指令
   })
-  val cpu = Module(new Top)//实例化CPU，然后把内存和CPU连接在一
-  val data_memory  = Module(new mem(memDepth = 1024, instWidth = 2))
-  //我们应该用的架构是哈佛架构 就是访存和取指是两条通路
-  //取指块最重要的是把指令拿回来
-  //下面是访存块
+
+  val cpu = Module(new Top)
+  val data_memory = Module(new mem(memDepth = 1024, instWidth = 2))
+
+  // 现有连接保持不变
   data_memory.io.if_mem.instAddr := cpu.io.pc
   cpu.io.Inst_A := data_memory.io.mem_id.inst(0)
   cpu.io.Inst_B := data_memory.io.mem_id.inst(1)
-  data_memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen//写入的控制信号
+  data_memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen
   data_memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
-  data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata//这个传进去的是地址和数据
-  //然后是读的部分
+  data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata
   cpu.io.DataRam.data_rdata := data_memory.io.mem_lsu.data
   data_memory.io.ex_mem.func3 := cpu.io.DataRam.func3
   data_memory.io.reset := reset
-  //是从内存到cpu的交互这里是数据的连接 把内存里面的数据传给后面的板块
-  //下一步是cpu的信息给内存的交互 去根据信号来修改内存里面的内容
+
+  // 连接调试信号到模块输出
+  io.pc := cpu.io.pc
+  io.instA := data_memory.io.mem_id.inst(0)
+  io.instB := data_memory.io.mem_id.inst(1)
 }

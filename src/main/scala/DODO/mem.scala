@@ -52,7 +52,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     memWriteVec(i) := alignedData(i*8+7, i*8)
   }
 
-  loadMemoryFromFile(memInside, "C:\\Users\\Lenovo\\Desktop\\Code\\dodo_rv32i\\src\\main\\dhrystone\\ramdata\\dhrystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(memInside, "/src/main/ramdata/dhrystone/dhrystone.data", MemoryLoadFileType.Hex)
 
   // 内存地址计算（字对齐）
   val dataAddr   = Wire(UInt(32.W))
