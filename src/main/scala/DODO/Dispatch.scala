@@ -15,7 +15,7 @@ class dispatch extends Module{
     //在这里面需要建立两个发射队列reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
     val regstate = Input(UInt(128.W))
-    val enable = Output(Bool())
+    val fetchblock = Output(Bool())
     val rollback = Input(Bool())
   })
   //在成功创建好两个保留站，现在需要实例化，并且成相应的逻辑
@@ -49,7 +49,7 @@ class dispatch extends Module{
   memquene.io.regstate <> io.regstate
   intquene.io.rollback <> io.rollback
   memquene.io.rollback <> io.rollback
-  io.enable := ~ (intquene.io.intfull || memquene.io.memfull)
+  io.fetchblock := (intquene.io.intfull || memquene.io.memfull)
 }
 //首先创建两个保留站
 //1：整形保留站
@@ -70,7 +70,7 @@ class intquene extends Module{
   val freelist_B: UInt = freelist_A - lowbit(freelist_A)
   val in_point_A: UInt = Log2(lowbit(freelist_A))
   val in_point_B: UInt = Log2(lowbit(freelist_B))
-
+  io.intfull := (lowbit(freelist_A) === 0.U) || (lowbit(freelist_B) === 0.U)
   //然后出队的指针需要根据就绪状态来判定，于是通过genreadylist函数判定处于槽位中的指令的ready状态，发送ready的即可，后面可考虑加入一个年龄判定优先级
   val readylist_A: UInt = genreadylist_A()
   val readylist_B: UInt = readylist_A  - lowbit(readylist_A)
@@ -118,7 +118,7 @@ class intquene extends Module{
 //freelist_B := freelist_A - lowbit(freelist_A)
 //  in_point_A := Log2(lowbit(freelist_A))
  // in_point_B := Log2(lowbit(freelist_B))
-  io.intfull := (in_point_A === 0.U)||(in_point_B === 0.U)
+
 }
 //2：访存保留站
 class memquene extends Module{
@@ -135,6 +135,7 @@ class memquene extends Module{
   val reserve: Vec[InstCtrlBlock] = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
   val in_point: UInt = RegInit(0.U(4.W))
   val out_point: UInt= RegInit(0.U(4.W))
+  io.memfull := ((in_point + 1.U ) === out_point || (in_point + 2.U ) === out_point)
 
   when(io.rollback) {
     in_point := 0.U
@@ -161,7 +162,6 @@ class memquene extends Module{
   }.otherwise{
     io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }
-  io.memfull := ((out_point + 1.U ) === in_point || (out_point + 2.U ) === in_point  )
 }
 object lowbit {
   def apply(data: UInt): UInt = {

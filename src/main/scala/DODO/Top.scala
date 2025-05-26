@@ -2,6 +2,7 @@ package DODO
 
 import chisel3._
 import chisel3.util._
+import chisel3.stage._
 
 
 class Top extends Module{
@@ -10,7 +11,22 @@ class Top extends Module{
     val Inst_A = Input(UInt(32.W))
     val Inst_B = Input(UInt(32.W))
     val DataRam = new RAMHelperIO_2
-    //    val uart = new UARTIO
+    //test
+    val fetch_inst_A = Output(new InstCtrlBlock)
+    val fetch_inst_B = Output(new InstCtrlBlock)
+    val map_inst_A = Output(new InstCtrlBlock)
+    val map_inst_B = Output(new InstCtrlBlock)
+    val dispatch_inst_A = Output(new InstCtrlBlock)
+    val dispatch_inst_B = Output(new InstCtrlBlock)
+    val dispatch_inst_C = Output(new InstCtrlBlock)
+    val fetchBlock = Output (Bool())
+    val com_inst_A = Output(new InstCtrlBlock)
+    val com_inst_B = Output(new InstCtrlBlock)
+    val decode_inst_A = Output(new InstCtrlBlock)
+    val decode_inst_B = Output(new InstCtrlBlock)
+    val rollback = Output(Bool())
+ //   val read_inst_A = Output(new InstCtrlBlock)
+  //  val read_inst_B = Output(new InstCtrlBlock)
   })
 
   // Module
@@ -22,6 +38,21 @@ class Top extends Module{
   val Execute     = Module(new Execute)
   val Memory      = Module(new Memory)
   val Commit      = Module(new Commit)
+
+  io.fetch_inst_A := InstFetch.io.IFIDA
+  io.fetch_inst_B := InstFetch.io.IFIDB
+  io.dispatch_inst_A := Dispatch.io.out_A
+  io.dispatch_inst_B := Dispatch.io.out_B
+  io.dispatch_inst_C := Dispatch.io.out_C
+  io.map_inst_A := RegMap.io.out_A
+  io.map_inst_B := RegMap.io.out_B
+  io.com_inst_B := Commit.io.CmtB
+  io.com_inst_A := Commit.io.CmtA
+  io.rollback := Commit.io.Rollback
+  io.com_inst_A :=Commit.io.CmtA
+  io.com_inst_B :=Commit.io.CmtB
+  io.decode_inst_A :=InstDecode.io.IDRMA
+  io.decode_inst_B :=InstDecode.io.IDRMB
 
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
@@ -74,10 +105,12 @@ class Top extends Module{
   RegRead.io.FinE <> Memory.io.FinE
 
   // block
-  val FetchBlock = Dispatch.io.enable || Commit.io.FetchBlock
+  val FetchBlock = (Dispatch.io.fetchblock) || Commit.io.FetchBlock
+  val enable = !FetchBlock
+  io.fetchBlock := Dispatch.io.fetchblock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
-  FetchBlock <> RegMap.io.enable //RegMap和Dispatch的FetchBlock改成了enable
+  enable <> RegMap.io.enable //RegMap和Dispatch的FetchBlock改成了enable
 
   // rollback
   Commit.io.Rollback <> InstFetch.io.Rollback
@@ -120,6 +153,36 @@ class TopWithMemory extends Module {
     val pc = Output(UInt(64.W))        // 暴露PC值
     val instA = Output(UInt(32.W))     // 暴露第一条指令
     val instB = Output(UInt(32.W))     // 暴露第二条指令
+    val fetch_instA =Output(UInt(32.W))
+    val fetch_instB =Output(UInt(32.W))
+    val regMap_instA = Output(UInt(32.W))
+    val regMap_instB = Output(UInt(32.W))
+    val dis_instA = Output(UInt(32.W))
+    val dis_instB = Output(UInt(32.W))
+    val dis_instC = Output(UInt(32.W))
+    val fetchblock = Output(Bool())
+    val com_jumppcA = Output(UInt(64.W))
+    val com_jumppcB = Output(UInt(64.W))
+    val com_bpPredTargetA = Output(UInt(64.W))
+    val com_bpPredTargetB = Output(UInt(64.W))
+    val regMap_reg1 =  Output(UInt(5.W))
+    val regMap_reg2 =  Output(UInt(5.W))
+    val regMap_reg3 =  Output(UInt(5.W))
+    val regMap_reg4 =  Output(UInt(5.W))
+    val regMap_pre1 =  Output(UInt(7.W))
+    val regMap_pre3 =  Output(UInt(7.W))
+    val regMap_pre2 =  Output(UInt(7.W))
+    val regMap_pre4 =  Output(UInt(7.W))
+    val regMap_cmtdesA = Output(UInt(7.W))
+    val regMap_cmtdesB = Output(UInt(7.W))
+    val regMap_pregdesA = Output(UInt(7.W))
+    val regMap_pregdesB = Output(UInt(7.W))
+    val decode_reg1 =  Output(UInt(5.W))
+    val decode_reg2 =  Output(UInt(5.W))
+    val decode_reg3 =  Output(UInt(5.W))
+    val decode_reg4 =  Output(UInt(5.W))
+
+    val com_rollback =Output(Bool())
   })
 
   val cpu = Module(new Top)
@@ -140,4 +203,41 @@ class TopWithMemory extends Module {
   io.pc := cpu.io.pc
   io.instA := data_memory.io.mem_id.inst(0)
   io.instB := data_memory.io.mem_id.inst(1)
+  io.fetch_instA := cpu.io.fetch_inst_A.inst
+  io.fetch_instB := cpu.io.fetch_inst_B.inst
+
+  io.decode_reg1 :=  cpu.io.decode_inst_A.regsrc1
+  io.decode_reg2 :=  cpu.io.decode_inst_A.regsrc2
+  io.decode_reg3 :=  cpu.io.decode_inst_B.regsrc1
+  io.decode_reg4 :=  cpu.io.decode_inst_B.regsrc2
+
+  io.regMap_instB := cpu.io.map_inst_B.inst
+  io.regMap_instA := cpu.io.map_inst_A.inst
+  io.regMap_reg1 := cpu.io.map_inst_A.regsrc1
+  io.regMap_reg2 := cpu.io.map_inst_A.regsrc2
+  io.regMap_reg3 := cpu.io.map_inst_B.regsrc1
+  io.regMap_reg4 := cpu.io.map_inst_B.regsrc2
+  io.regMap_pre1 := cpu.io.map_inst_A.pregsrc1
+  io.regMap_pre2 := cpu.io.map_inst_A.pregsrc2
+  io.regMap_pre3 := cpu.io.map_inst_B.pregsrc1
+  io.regMap_pre4 := cpu.io.map_inst_B.pregsrc1
+  io.regMap_pregdesA := cpu.io.map_inst_A.pregdes
+  io.regMap_pregdesB := cpu.io.map_inst_B.pregdes
+  io.regMap_cmtdesA := cpu.io.map_inst_A.cmtdes
+  io.regMap_cmtdesB := cpu.io.map_inst_B.cmtdes
+
+  io.dis_instA := cpu.io.dispatch_inst_A.inst
+  io.dis_instB := cpu.io.dispatch_inst_B.inst
+  io.dis_instC := cpu.io.dispatch_inst_C.inst
+
+  io.fetchblock := cpu.io.fetchBlock
+  io.com_jumppcA := cpu.io.com_inst_A.jump.actTarget
+  io.com_jumppcB := cpu.io.com_inst_B.jump.actTarget
+  io.com_bpPredTargetA := cpu.io.com_inst_A.bpPredTarget
+  io.com_bpPredTargetB := cpu.io.com_inst_B.bpPredTarget
+  io.com_rollback := cpu.io.rollback
+}
+
+object ExVerilog extends App {
+  (new ChiselStage).emitVerilog(new TopWithMemory(), Array("--target-dir", "generated"))
 }
