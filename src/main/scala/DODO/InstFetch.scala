@@ -38,10 +38,7 @@ class InstFetch extends Module {
 
 
   // 初始化与预热逻辑
-  val Warmup = RegInit(0.U(3.W))
-  when(Warmup === 4.U) { Warmup := 4.U }
-    .otherwise { Warmup := Warmup + 1.U }
-  val ENABLE = Warmup === 4.U && !io.FetchBlock//这里阻塞信号起到了作用
+  val ENABLE =  !io.FetchBlock//这里阻塞信号起到了作用
 
 
   // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------

@@ -104,11 +104,11 @@ class intquene extends Module{
     reserve(in_point_A) := io.intquene_in_A
     reserve(in_point_B) := io.intquene_in_B
 
-    when(out_point_A =/=0.U){
+    when(lowbit(readylist_A) =/=0.U){
       io.intquene_out_A := reserve (out_point_A)
       reserve(out_point_A) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     }.otherwise{io.intquene_out_A :=WireInit(0.U.asTypeOf(new InstCtrlBlock())) }
-    when(out_point_B =/=0.U){
+    when(lowbit(readylist_B) =/=0.U){
       io.intquene_out_B := reserve (out_point_B)
       reserve(out_point_B) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstCtrlBlock()))}
@@ -171,38 +171,4 @@ object lowbit {
 }
 
 
-// 添加Verilog生成对象
-object DispatchVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new dispatch(),
-    args = Array(
-      "-o", "Dispatch.v",
-      "--target-dir", "generated/Dispatch",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}
-
-// 为保留站模块添加Verilog生成对象
-object QueneVerilog extends App {
-  // 生成整形保留站的Verilog
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new intquene(),
-    args = Array(
-      "-o", "int_quene.v",
-      "--target-dir", "generated/Dispatch",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-
-  // 生成访存保留站的Verilog
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new memquene(),
-    args = Array(
-      "-o", "mem_quene.v",
-      "--target-dir", "generated/Dispatch",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}
 

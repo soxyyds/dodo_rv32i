@@ -174,19 +174,8 @@ class Decoder extends Module {
 
   // 寄存器操作数识别
   val wen = io.isa.Aclass || io.isa.Jclass || io.isa.Lclass || io.isa.CSRRW
-  val src1 =  (io.isa.Aclass() && !(io.isa.LUI || io.isa.AUIPC)) ||
-    io.isa.Bclass() ||
-    io.isa.Sclass() ||
-    io.isa.Lclass() ||
-    io.isa.JALR||
-    io.isa.CSRRW
-  val src2 =(io.isa.Aclass() &&
-    ( io.isa.ADD || io.isa.SUB ||
-      io.isa.SLL || io.isa.SRL ||
-      io.isa.AND || io.isa.OR ||
-      io.isa.SLT || io.isa.SLTU)) ||
-    io.isa.Bclass() ||
-    io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
+  val src1 =  (io.isa.Aclass() && !(io.isa.LUI || io.isa.AUIPC)) || io.isa.Bclass() || io.isa.Sclass() || io.isa.Lclass() || io.isa.JALR|| io.isa.CSRRW
+  val src2 =(io.isa.Aclass() && ( io.isa.ADD || io.isa.SUB || io.isa.SLL || io.isa.SRL || io.isa.AND || io.isa.OR || io.isa.SLT || io.isa.SLTU)) || io.isa.Bclass() || io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
   io.regdes := Mux(wen, io.inst(11,7), 0.U)
   io.regsrc1 := Mux(src1, io.inst(19,15), 0.U)
   io.regsrc2 := Mux(src2, io.inst(24,20), 0.U)

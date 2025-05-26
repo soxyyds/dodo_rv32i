@@ -42,34 +42,48 @@
   {
     "class":"firrtl.annotations.LoadMemoryAnnotation",
     "target":"TopWithMemory.mem.memInside_0",
-    "fileName":"G:\\testdata\\drystone.data",
+    "fileName":"G:\\testdata\\dhrystone.data",
     "hexOrBinary":"h",
     "originalMemoryNameOpt":"memInside"
   },
   {
     "class":"firrtl.annotations.LoadMemoryAnnotation",
     "target":"TopWithMemory.mem.memInside_1",
-    "fileName":"G:\\testdata\\drystone.data",
+    "fileName":"G:\\testdata\\dhrystone.data",
     "hexOrBinary":"h",
     "originalMemoryNameOpt":"memInside"
   },
   {
     "class":"firrtl.annotations.LoadMemoryAnnotation",
     "target":"TopWithMemory.mem.memInside_2",
-    "fileName":"G:\\testdata\\drystone.data",
+    "fileName":"G:\\testdata\\dhrystone.data",
     "hexOrBinary":"h",
     "originalMemoryNameOpt":"memInside"
   },
   {
     "class":"firrtl.annotations.LoadMemoryAnnotation",
     "target":"TopWithMemory.mem.memInside_3",
-    "fileName":"G:\\testdata\\drystone.data",
+    "fileName":"G:\\testdata\\dhrystone.data",
     "hexOrBinary":"h",
     "originalMemoryNameOpt":"memInside"
   },
   {
     "class":"firrtl.transforms.BlackBoxTargetDirAnno",
     "targetDir":"generated"
+  },
+  {
+    "class":"firrtl.transforms.CombinationalPath",
+    "sink":"~TopWithMemory|TopWithMemory>io_fetch_instA",
+    "sources":[
+      "~TopWithMemory|TopWithMemory>reset"
+    ]
+  },
+  {
+    "class":"firrtl.transforms.CombinationalPath",
+    "sink":"~TopWithMemory|TopWithMemory>io_fetch_instB",
+    "sources":[
+      "~TopWithMemory|TopWithMemory>reset"
+    ]
   },
   {
     "class":"firrtl.transforms.CombinationalPath",
@@ -89,24 +103,24 @@
     "class":"firrtl.transforms.BlackBoxInlineAnno",
     "target":"TopWithMemory.mem",
     "name":"TopWithMemory.mem.memInside_0.v",
-    "text":"module BindsTo_0_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\drystone_0.data\", mem.memInside_0);\nend\n                      endmodule\n\nbind mem BindsTo_0_mem BindsTo_0_mem_Inst(.*);"
+    "text":"module BindsTo_0_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\dhrystone_0.data\", mem.memInside_0);\nend\n                      endmodule\n\nbind mem BindsTo_0_mem BindsTo_0_mem_Inst(.*);"
   },
   {
     "class":"firrtl.transforms.BlackBoxInlineAnno",
     "target":"TopWithMemory.mem",
     "name":"TopWithMemory.mem.memInside_1.v",
-    "text":"module BindsTo_1_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\drystone_1.data\", mem.memInside_1);\nend\n                      endmodule\n\nbind mem BindsTo_1_mem BindsTo_1_mem_Inst(.*);"
+    "text":"module BindsTo_1_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\dhrystone_1.data\", mem.memInside_1);\nend\n                      endmodule\n\nbind mem BindsTo_1_mem BindsTo_1_mem_Inst(.*);"
   },
   {
     "class":"firrtl.transforms.BlackBoxInlineAnno",
     "target":"TopWithMemory.mem",
     "name":"TopWithMemory.mem.memInside_2.v",
-    "text":"module BindsTo_2_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\drystone_2.data\", mem.memInside_2);\nend\n                      endmodule\n\nbind mem BindsTo_2_mem BindsTo_2_mem_Inst(.*);"
+    "text":"module BindsTo_2_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\dhrystone_2.data\", mem.memInside_2);\nend\n                      endmodule\n\nbind mem BindsTo_2_mem BindsTo_2_mem_Inst(.*);"
   },
   {
     "class":"firrtl.transforms.BlackBoxInlineAnno",
     "target":"TopWithMemory.mem",
     "name":"TopWithMemory.mem.memInside_3.v",
-    "text":"module BindsTo_3_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\drystone_3.data\", mem.memInside_3);\nend\n                      endmodule\n\nbind mem BindsTo_3_mem BindsTo_3_mem_Inst(.*);"
+    "text":"module BindsTo_3_mem(\n  input         clock,\n  input         reset,\n  input         io_reset,\n  input  [63:0] io_if_mem_instAddr,\n  input  [63:0] io_ex_mem_dataAddr,\n  input         io_ex_mem_writeEn,\n  input  [31:0] io_ex_mem_writeData,\n  input  [2:0]  io_ex_mem_func3,\n  output [31:0] io_mem_id_inst_0,\n  output [31:0] io_mem_id_inst_1,\n  output [31:0] io_mem_lsu_data\n);\n\ninitial begin\n  $readmemh(\"G:\\testdata\\dhrystone_3.data\", mem.memInside_3);\nend\n                      endmodule\n\nbind mem BindsTo_3_mem BindsTo_3_mem_Inst(.*);"
   }
 ]
