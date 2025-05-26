@@ -20,10 +20,19 @@ class Top extends Module{
     val dispatch_inst_B = Output(new InstCtrlBlock)
     val dispatch_inst_C = Output(new InstCtrlBlock)
     val fetchBlock = Output (Bool())
-    val com_inst_A = Output(new InstCtrlBlock)
-    val com_inst_B = Output(new InstCtrlBlock)
     val decode_inst_A = Output(new InstCtrlBlock)
     val decode_inst_B = Output(new InstCtrlBlock)
+    val read_inst_A = Output(new InstCtrlBlock)
+    val read_inst_B = Output(new InstCtrlBlock)
+    val exe_inst_A = Output(new InstCtrlBlock)
+    val exe_inst_B = Output(new InstCtrlBlock)
+    val memory_inst_A = Output(new InstCtrlBlock)
+    val memory_inst_B = Output(new InstCtrlBlock)
+    val com_inst_A = Output(new InstCtrlBlock)
+    val com_inst_B = Output(new InstCtrlBlock)
+    val fin_A = Output(new InstCtrlBlock)
+    val fin_B = Output(new InstCtrlBlock)
+
     val rollback = Output(Bool())
  //   val read_inst_A = Output(new InstCtrlBlock)
   //  val read_inst_B = Output(new InstCtrlBlock)
@@ -44,8 +53,8 @@ class Top extends Module{
   io.dispatch_inst_A := Dispatch.io.out_A
   io.dispatch_inst_B := Dispatch.io.out_B
   io.dispatch_inst_C := Dispatch.io.out_C
-  io.map_inst_A := RegMap.io.RMDPA
-  io.map_inst_B := RegMap.io.RMDPB
+  io.map_inst_A := RegMap.io.out_A
+  io.map_inst_B := RegMap.io.out_B
   io.com_inst_B := Commit.io.CmtB
   io.com_inst_A := Commit.io.CmtA
   io.rollback := Commit.io.Rollback
@@ -53,6 +62,11 @@ class Top extends Module{
   io.com_inst_B :=Commit.io.CmtB
   io.decode_inst_A :=InstDecode.io.IDRMA
   io.decode_inst_B :=InstDecode.io.IDRMB
+  io.read_inst_A := RegRead.io.RREXA
+  io.read_inst_B := RegRead.io.RREXB
+  io.fin_A := RegRead.io.FinA
+  io.fin_B := RegRead.io.FinB
+  io.exe_inst_A := Execute.io.EXMEM.inst
 
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
@@ -62,10 +76,10 @@ class Top extends Module{
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
   InstFetch.io.IFIDB <> InstDecode.io.IFIDB
-  InstDecode.io.IDRMA <> RegMap.io.IDRMA //RegMap的输入改名了
-  InstDecode.io.IDRMB <> RegMap.io.IDRMB
-  RegMap.io.RMDPA <> Dispatch.io.in_A //RegMap的输出改名了
-  RegMap.io.RMDPB <> Dispatch.io.in_B //dispatch的输入改名了
+  InstDecode.io.IDRMA <> RegMap.io.in_A //RegMap的输入改名了
+  InstDecode.io.IDRMB <> RegMap.io.in_B
+  RegMap.io.out_A <> Dispatch.io.in_A //RegMap的输出改名了
+  RegMap.io.out_B <> Dispatch.io.in_B //dispatch的输入改名了
   Dispatch.io.out_A <> RegRead.io.DPRRA //dispatch的输出改名了
   Dispatch.io.out_B <> RegRead.io.DPRRB
   Dispatch.io.out_C  <> RegRead.io.DPRRC
@@ -77,29 +91,29 @@ class Top extends Module{
 
 
   // ReOrder
-  Commit.io.EnA <> RegMap.io.RMDPA
-  Commit.io.EnB <> RegMap.io.RMDPB
-  Commit.io.ReOrderNumA <> RegMap.io.ReOrderNumA //ReorderNumA改成了num_A
-  Commit.io.ReOrderNumB <> RegMap.io.ReOrderNumB
+  Commit.io.EnA <> RegMap.io.out_A
+  Commit.io.EnB <> RegMap.io.out_B
+  Commit.io.ReOrderNumA <> RegMap.io.num_A //ReorderNumA改成了num_A
+  Commit.io.ReOrderNumB <> RegMap.io.num_B
   Commit.io.FinA <> RegRead.io.FinA
   Commit.io.FinB <> RegRead.io.FinB
   Commit.io.FinC <> Execute.io.FinC
   Commit.io.FinD <> Execute.io.FinD
   Commit.io.FinE <> Memory.io.FinE
   Commit.io.CmtA <> InstFetch.io.CmtA
-  Commit.io.CmtA <> RegMap.io.CmtA//CmtA改成了cmt_A
-  Commit.io.CmtB <> RegMap.io.CmtB
+  Commit.io.CmtA <> RegMap.io.cmt_A//CmtA改成了cmt_A
+  Commit.io.CmtB <> RegMap.io.cmt_B
   Commit.io.CmtA <> Memory.io.CmtA
 
   // dispatch
-  Dispatch.io.regstate <> RegMap.io.PhyRegStates //PhyRegStates改成了regstate
+  Dispatch.io.regstate <> RegMap.io.regstate //PhyRegStates改成了regstate
 
   // map execute
-  RegMap.io.FinA <> RegRead.io.FinA //RegMap中FinA改成了fin_A
-  RegMap.io.FinB <> RegRead.io.FinB
-  RegMap.io.FinC <> Execute.io.FinC
-  RegMap.io.FinD <> Execute.io.FinD
-  RegMap.io.FinE <> Memory.io.FinE
+  RegMap.io.fin_A <> RegRead.io.FinA //RegMap中FinA改成了fin_A
+  RegMap.io.fin_B <> RegRead.io.FinB
+  RegMap.io.fin_C <> Execute.io.FinC
+  RegMap.io.fin_D <> Execute.io.FinD
+  RegMap.io.fin_E <> Memory.io.FinE
   RegRead.io.FinC <> Execute.io.FinC
   RegRead.io.FinD <> Execute.io.FinD
   RegRead.io.FinE <> Memory.io.FinE
@@ -110,12 +124,12 @@ class Top extends Module{
   io.fetchBlock := Dispatch.io.fetchblock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
-  FetchBlock <> RegMap.io.FetchBlock //RegMap和Dispatch的FetchBlock改成了enable
+  enable <> RegMap.io.enable//RegMap和Dispatch的FetchBlock改成了enable
 
   // rollback
   Commit.io.Rollback <> InstFetch.io.Rollback
   Commit.io.Rollback <> InstDecode.io.Rollback
-  Commit.io.Rollback <> RegMap.io.Rollback //Rollback改成了rollback
+  Commit.io.Rollback <> RegMap.io.rollback //Rollback改成了rollback
   Commit.io.Rollback <> Dispatch.io.rollback
   Commit.io.Rollback <> RegRead.io.Rollback
   Commit.io.Rollback <> Execute.io.Rollback
@@ -181,7 +195,16 @@ class TopWithMemory extends Module {
     val decode_reg2 =  Output(UInt(5.W))
     val decode_reg3 =  Output(UInt(5.W))
     val decode_reg4 =  Output(UInt(5.W))
-
+    val src1 = Output(UInt(32.W))
+    val src2 = Output(UInt(32.W))
+    val src3 = Output(UInt(32.W))
+    val src4 = Output(UInt(32.W))
+    val read_instA = Output(UInt(32.W))
+    val read_instB = Output(UInt(32.W))
+    val fin_A_jumptarget = Output(UInt(64.W))
+    val fin_A_branchtarget = Output(UInt(64.W))
+    val fin_B_jumptarget = Output(UInt(64.W))
+    val fin_B_branchtarget = Output(UInt(64.W))
     val com_rollback =Output(Bool())
   })
 
@@ -229,6 +252,17 @@ class TopWithMemory extends Module {
   io.dis_instA := cpu.io.dispatch_inst_A.inst
   io.dis_instB := cpu.io.dispatch_inst_B.inst
   io.dis_instC := cpu.io.dispatch_inst_C.inst
+
+  io.src1 := cpu.io.read_inst_A.src1
+  io.src2 := cpu.io.read_inst_A.src2
+  io.src3 := cpu.io.read_inst_B.src1
+  io.src4 := cpu.io.read_inst_B.src2
+  io.read_instA := cpu.io.read_inst_A.inst
+  io.read_instB := cpu.io.read_inst_B.inst
+  io.fin_A_jumptarget := cpu.io.fin_A.jump.actTarget
+  io.fin_A_branchtarget := cpu.io.fin_A.branch.target
+  io.fin_B_jumptarget := cpu.io.fin_B.jump.actTarget
+  io.fin_B_branchtarget := cpu.io.fin_B.branch.target
 
   io.fetchblock := cpu.io.fetchBlock
   io.com_jumppcA := cpu.io.com_inst_A.jump.actTarget
