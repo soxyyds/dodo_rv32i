@@ -2,7 +2,6 @@ package DODO
 
 import chisel3._
 import chisel3.util._
-import DODO.RegMap
 
 
 class RegRead extends Module{
@@ -46,18 +45,14 @@ class RegRead extends Module{
   val src6 = PhyRegFile.read(INSTC.pregsrc2)
 
   // 在 RegRead 模块中，添加中间寄存器
-  val FinA_wbdata_reg = RegNext(io.FinA.wbdata)
-  val FinB_wbdata_reg = RegNext(io.FinB.wbdata)
-  val FinC_wbdata_reg = RegNext(io.FinC.wbdata)
-  val FinD_wbdata_reg = RegNext(io.FinD.wbdata)
-  val FinE_wbdata_reg = RegNext(io.FinE.wbdata)
+
 
   // 调用 write 方法时，使用中间寄存器,在这里写了
-  PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, Mux(io.FinA.Valid, FinA_wbdata_reg, 0.U))
-  PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, Mux(io.FinB.Valid, FinB_wbdata_reg, 0.U))
-  PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, Mux(io.FinC.Valid, FinC_wbdata_reg, 0.U))
-  PhyRegFile.write(io.FinD.Valid && io.FinD.finish, io.FinD.pregdes, Mux(io.FinD.Valid, FinD_wbdata_reg, 0.U))
-  PhyRegFile.write(io.FinE.Valid && io.FinE.finish, io.FinE.pregdes, Mux(io.FinE.Valid, FinE_wbdata_reg, 0.U))
+  PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
+  PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
+  PhyRegFile.write(io.FinC.Valid && io.FinC.finish, io.FinC.pregdes, io.FinC.wbdata)
+  PhyRegFile.write(io.FinD.Valid && io.FinD.finish, io.FinD.pregdes, io.FinD.wbdata)
+  PhyRegFile.write(io.FinE.Valid && io.FinE.finish, io.FinE.pregdes, io.FinE.wbdata)
 
   val BJU1 = Module(new BranchJumpUnit)//计算跳转的地址
   BJU1.io.isa <> INSTA.isa
@@ -178,8 +173,8 @@ class BranchJumpUnit extends Module{
   val io = IO(new Bundle{
     val isa = Input(new ISA)
     val pc = Input(UInt(64.W))
-    val src1 = Input(UInt(64.W))
-    val src2 = Input(UInt(64.W))
+    val src1 = Input(UInt(32.W))
+    val src2 = Input(UInt(32.W))
     val imm = Input(new IMM)  //指令的立即数，包含不同类型的立即数
 
     val branch = Output(new BranchIssue)

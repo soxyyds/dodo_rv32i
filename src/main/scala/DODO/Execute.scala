@@ -1,6 +1,8 @@
 package DODO
 import chisel3._
 import chisel3.util._
+
+
 //ljlsyfdygv
 class Execute extends Module{
   val io = IO(new Bundle{
@@ -128,38 +130,38 @@ class ArithmeticLogicalUnit extends Module {
   })
 
   //Arithmetic
-  val addi = io.isa.ADDI & (io.src1 + io.imm.I)
-  val add  = io.isa.ADD  & (io.src1 + io.src2)
-  val lui  = io.isa.LUI  & io.imm.U
-  val sub  = io.isa.SUB  & (io.src1 - io.src2)
+  val addi = SignExt(io.isa.ADDI.asUInt, 32) & (io.src1 + io.imm.I)
+  val add  = SignExt(io.isa.ADD.asUInt, 32)  & (io.src1 + io.src2)
+  val lui  = SignExt(io.isa.LUI.asUInt, 32)  & io.imm.U
+  val sub  = SignExt(io.isa.SUB.asUInt, 32)  & (io.src1 - io.src2)
   val Arithmetic = addi | add | lui | sub
   //Logical
-  val andi = io.isa.ANDI & (io.src1 & io.imm.I)
-  val and  = io.isa.AND  & (io.src1 & io.src2)
-  val ori  = io.isa.ORI  & (io.src1 | io.imm.I)
-  val or   = io.isa.OR   & (io.src1 | io.src2)
-  val xori = io.isa.XORI & (io.src1 ^ io.imm.I)
-  val xor  = io.isa.XOR  & (io.src1 ^ io.src2)
+  val andi = SignExt(io.isa.ANDI.asUInt, 32) & (io.src1 & io.imm.I)
+  val and  = SignExt(io.isa.AND.asUInt, 32)  & (io.src1 & io.src2)
+  val ori  = SignExt(io.isa.ORI.asUInt, 32)  & (io.src1 | io.imm.I)
+  val or   = SignExt(io.isa.OR.asUInt, 32)   & (io.src1 | io.src2)
+  val xori = SignExt(io.isa.XORI.asUInt, 32) & (io.src1 ^ io.imm.I)
+  val xor  = SignExt(io.isa.XOR.asUInt, 32)  & (io.src1 ^ io.src2)
   val Logical = andi | and | ori | or | xori | xor
 
   //Compare
-  val slt   = io.isa.SLT   & Mux(io.src1.asSInt < io.src2.asSInt, 1.U, 0.U)
-  val slti  = io.isa.SLTI  & Mux(io.src1.asSInt < io.imm.I.asSInt, 1.U, 0.U)
-  val sltu  = io.isa.SLTU  & Mux(io.src1 < io.src2, 1.U, 0.U)
-  val sltiu = io.isa.SLTIU & Mux(io.src1 < io.imm.I, 1.U, 0.U)
+  val slt   = SignExt(io.isa.SLT.asUInt, 32)   & Mux(io.src1.asSInt < io.src2.asSInt, 1.U, 0.U)
+  val slti  = SignExt(io.isa.SLTI.asUInt, 32)  & Mux(io.src1.asSInt < io.imm.I.asSInt, 1.U, 0.U)
+  val sltu  = SignExt(io.isa.SLTU.asUInt, 32)  & Mux(io.src1 < io.src2, 1.U, 0.U)
+  val sltiu = SignExt(io.isa.SLTIU.asUInt, 32) & Mux(io.src1 < io.imm.I, 1.U, 0.U)
   val Compare = slt | slti | sltu | sltiu
   //Shifts
   private def getShiftAmount(useImm: Bool) =
     Mux(useImm, io.imm.I(4,0), io.src2(4,0))
   val shiftReg = getShiftAmount(false.B)
-  val sll  = io.isa.SLL  & (io.src1 << shiftReg)(31,0)
-  val srl  = io.isa.SRL  & (io.src1 >> shiftReg)
-  val sra  = io.isa.SRA  & (io.src1.asSInt >> shiftReg).asUInt
+  val sll  = SignExt(io.isa.SLL.asUInt, 32)  & (io.src1 << shiftReg)(31,0)
+  val srl  = SignExt(io.isa.SRL.asUInt, 32)  & (io.src1 >> shiftReg)(31,0)
+  val sra  = SignExt(io.isa.SRA.asUInt, 32)  & (io.src1.asSInt >> shiftReg).asUInt
   // 立即数移位版本（使用imm.I作为移位量）
   val shiftImm = getShiftAmount(true.B)
-  val slli = io.isa.SLLI & (io.src1 << shiftImm)(31,0)
-  val srli = io.isa.SRLI & (io.src1 >> shiftImm)
-  val srai = io.isa.SRAI & (io.src1.asSInt >> shiftImm).asUInt
+  val slli = SignExt(io.isa.SLLI.asUInt, 32) & (io.src1 << shiftImm)(31,0)
+  val srli = SignExt(io.isa.SRLI.asUInt, 32) & (io.src1 >> shiftImm)(31,0)
+  val srai = SignExt(io.isa.SRAI.asUInt, 32) & (io.src1.asSInt >> shiftImm).asUInt
 
   val Shifts = sll | srl | sra | slli | srli | srai
 
