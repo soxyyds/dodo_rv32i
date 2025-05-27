@@ -18,6 +18,7 @@ class Commit extends Module {
 
     val ReOrderNumA = Output(UInt(6.W))
     val ReOrderNumB = Output(UInt(6.W))
+    val Bank = Output(Vec(64, new InstCtrlBlock()))
 
     val ForwardLoad = Input(new LoadIssue)
     val ForwardStore = Output(new StoreIssue)
@@ -106,6 +107,7 @@ class Commit extends Module {
   when(io.CmtB.isa.CSRRW) {
     io.CmtB.csr_wdata := io.CmtB.src1
   }
+    io.Bank := Bank
 }
 
 object CyclicShiftLeft {

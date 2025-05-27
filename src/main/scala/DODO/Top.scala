@@ -30,6 +30,7 @@ class Top extends Module{
  //   val memory_inst_B = Output(new InstCtrlBlock)
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
+    val com_bank = Output(Vec(64, new InstCtrlBlock()))
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
     val fin_C = Output(new InstCtrlBlock)
@@ -73,6 +74,7 @@ class Top extends Module{
   io.fin_C := Execute.io.FinC
   io.fin_D := Execute.io.FinD
   io.fin_E := Memory.io.FinE
+  io.com_bank := Commit.io.Bank
 
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
@@ -213,6 +215,8 @@ class TopWithMemory extends Module {
     val src2 = Output(UInt(32.W))
     val src3 = Output(UInt(32.W))
     val src4 = Output(UInt(32.W))
+    val com_reorderNumA = Output(UInt(6.W))
+    val com_reorderNumB = Output(UInt(6.W))
     val com_presrc1 = Output(UInt(7.W))
     val com_presrc2 = Output(UInt(7.W))
     val com_presrc3 = Output(UInt(7.W))
@@ -254,6 +258,7 @@ class TopWithMemory extends Module {
     val fin_C_finish = Output(Bool())
     val fin_C_pregdes = Output(UInt(32.W))
     val com_rollback =Output(Bool())
+    val com_bank = Output(Vec(64, new InstCtrlBlock()))
   })
 
   val cpu = Module(new Top)
@@ -325,6 +330,8 @@ class TopWithMemory extends Module {
 
   io.com_dataA :=cpu.io.com_inst_A.wbdata
   io.com_dataB :=cpu.io.com_inst_B.wbdata
+  io.com_reorderNumA := cpu.io.com_inst_A.reOrderNum
+  io.com_reorderNumB := cpu.io.com_inst_B.reOrderNum
   io.read_instA := cpu.io.read_inst_A.inst
   io.read_instB := cpu.io.read_inst_B.inst
 
@@ -359,6 +366,7 @@ class TopWithMemory extends Module {
   io.com_bpPredTargetA := cpu.io.com_inst_A.bpPredTarget
   io.com_bpPredTargetB := cpu.io.com_inst_B.bpPredTarget
   io.com_rollback := cpu.io.rollback
+  io.com_bank := cpu.io.com_bank // 暴露
 }
 
 object ExVerilog extends App {
