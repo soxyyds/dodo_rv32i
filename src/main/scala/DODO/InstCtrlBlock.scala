@@ -2,6 +2,7 @@ package DODO
 
 import chisel3._
 
+
 class InstCtrlBlock extends Bundle{
   //base
   val Valid :Bool = Bool()

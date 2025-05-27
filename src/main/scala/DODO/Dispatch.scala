@@ -59,7 +59,7 @@ class intquene extends Module{
     val intquene_in_B = Input(new InstCtrlBlock)
     val intquene_out_A = Output(new InstCtrlBlock)
     val intquene_out_B = Output(new InstCtrlBlock)
-    val regstate = Input(Bool())
+    val regstate = Input(UInt(128.W))
     val rollback = Input(Bool())
     val intfull = Output(Bool())
   })
@@ -87,7 +87,7 @@ class intquene extends Module{
   def genreadylist_A(): UInt = {
     val readylist = Wire(Vec(16,UInt(1.W)))
     for(i <- 0 to 15){
-      readylist(i) := reserve(i).Valid && io.regstate(reserve(i).pregsrc1) && io.regstate(reserve(i).pregsrc2)
+      readylist(i) := reserve(i).Valid && io.regstate(reserve(i).pregsrc1)&& io.regstate(reserve(i).pregsrc2)
     }
     readylist.asUInt
   }
@@ -114,10 +114,10 @@ class intquene extends Module{
     }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstCtrlBlock()))}
   }
   //这个是用于阻塞判断的，从而避免满状态的出现
-//  freelist_A := genfreelist_A()
-//freelist_B := freelist_A - lowbit(freelist_A)
-//  in_point_A := Log2(lowbit(freelist_A))
- // in_point_B := Log2(lowbit(freelist_B))
+  //  freelist_A := genfreelist_A()
+  //freelist_B := freelist_A - lowbit(freelist_A)
+  //  in_point_A := Log2(lowbit(freelist_A))
+  // in_point_B := Log2(lowbit(freelist_B))
 
 }
 //2：访存保留站

@@ -6,7 +6,7 @@ import chisel3.util.experimental.loadMemoryFromFile
 import firrtl.annotations.MemoryLoadFileType
 
 class if_mem extends Bundle {
-  val instAddr = Output(UInt(64.W))
+  val instAddr = Output(UInt(32.W))
 }//地址输出
 
 class mem_id(val instWidth: Int) extends Bundle {
@@ -14,7 +14,7 @@ class mem_id(val instWidth: Int) extends Bundle {
 }//指令获取
 
 class lsu_mem_c extends Bundle {
-  val dataAddr  = Output(UInt(64.W))
+  val dataAddr  = Output(UInt(32.W))
   val writeEn   = Output(Bool())
   val writeData = Output(UInt(32.W))
   val func3     = Output(UInt(3.W))
@@ -52,11 +52,12 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     memWriteVec(i) := alignedData(i*8+7, i*8)
   }
 
-  loadMemoryFromFile(memInside, "/src/main/ramdata/dhrystone/dhrystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(memInside, "G:\\testdata\\dhrystone.data", MemoryLoadFileType.Hex)
 
   // 内存地址计算（字对齐）
   val dataAddr   = Wire(UInt(32.W))
   val dataAddrP1 = Wire(UInt(32.W))
+
   dataAddr   := io.ex_mem.dataAddr(31,0) >> 2.U
   dataAddrP1 := dataAddr + 1.U
 
@@ -65,7 +66,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     io.mem_id.inst(i) := Mux(
       io.reset,
       0x13.U,  // NOP指令
-      memInside(io.if_mem.instAddr(31,0) + i.U).reduce((acc, elem) => Cat(elem, acc))
+      memInside(io.if_mem.instAddr(31,2) + i.U).reduce((acc, elem) => Cat(elem, acc))
     )
   }
 
@@ -146,14 +147,14 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
   }
 }
 
-// 添加Verilog生成对象
-object memVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new mem(),
-    args = Array(
-      "-o", "mem.v",
-      "--target-dir", "generated/mem",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}
+//// 添加Verilog生成对象
+//object memVerilog extends App {
+//  (new chisel3.stage.ChiselStage).emitVerilog(
+//    new mem(),
+//    args = Array(
+//      "-o", "mem.v",
+//      "--target-dir", "generated/mem",
+//      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
+//    )
+//  )
+//}

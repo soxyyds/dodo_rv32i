@@ -24,14 +24,17 @@ class Top extends Module{
     val decode_inst_B = Output(new InstCtrlBlock)
     val read_inst_A = Output(new InstCtrlBlock)
     val read_inst_B = Output(new InstCtrlBlock)
-    val exe_inst_A = Output(new InstCtrlBlock)
-    val exe_inst_B = Output(new InstCtrlBlock)
-    val memory_inst_A = Output(new InstCtrlBlock)
-    val memory_inst_B = Output(new InstCtrlBlock)
+ //   val exe_inst_A = Output(new InstCtrlBlock)
+ //   val exe_inst_B = Output(new InstCtrlBlock)
+ //   val memory_inst_A = Output(new InstCtrlBlock)
+ //   val memory_inst_B = Output(new InstCtrlBlock)
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
+    val fin_C = Output(new InstCtrlBlock)
+    val fin_D = Output(new InstCtrlBlock)
+    val fin_E = Output(new InstCtrlBlock)
 
     val rollback = Output(Bool())
  //   val read_inst_A = Output(new InstCtrlBlock)
@@ -53,8 +56,8 @@ class Top extends Module{
   io.dispatch_inst_A := Dispatch.io.out_A
   io.dispatch_inst_B := Dispatch.io.out_B
   io.dispatch_inst_C := Dispatch.io.out_C
-  io.map_inst_A := RegMap.io.out_A
-  io.map_inst_B := RegMap.io.out_B
+  io.map_inst_A := RegMap.io.RMDPA
+  io.map_inst_B := RegMap.io.RMDPB
   io.com_inst_B := Commit.io.CmtB
   io.com_inst_A := Commit.io.CmtA
   io.rollback := Commit.io.Rollback
@@ -66,7 +69,10 @@ class Top extends Module{
   io.read_inst_B := RegRead.io.RREXB
   io.fin_A := RegRead.io.FinA
   io.fin_B := RegRead.io.FinB
-  io.exe_inst_A := Execute.io.EXMEM.inst
+ // io.exe_inst_A := Execute.io.EXMEM.inst
+  io.fin_C := Execute.io.FinC
+  io.fin_D := Execute.io.FinD
+  io.fin_E := Memory.io.FinE
 
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
@@ -76,10 +82,10 @@ class Top extends Module{
   // pipeline
   InstFetch.io.IFIDA <> InstDecode.io.IFIDA
   InstFetch.io.IFIDB <> InstDecode.io.IFIDB
-  InstDecode.io.IDRMA <> RegMap.io.in_A //RegMap的输入改名了
-  InstDecode.io.IDRMB <> RegMap.io.in_B
-  RegMap.io.out_A <> Dispatch.io.in_A //RegMap的输出改名了
-  RegMap.io.out_B <> Dispatch.io.in_B //dispatch的输入改名了
+  InstDecode.io.IDRMA <> RegMap.io.IDRMA //RegMap的输入改名了
+  InstDecode.io.IDRMB <> RegMap.io.IDRMB
+  RegMap.io.RMDPA <> Dispatch.io.in_A//RegMap的输出改名了
+  RegMap.io.RMDPB <> Dispatch.io.in_B //dispatch的输入改名了
   Dispatch.io.out_A <> RegRead.io.DPRRA //dispatch的输出改名了
   Dispatch.io.out_B <> RegRead.io.DPRRB
   Dispatch.io.out_C  <> RegRead.io.DPRRC
@@ -91,29 +97,29 @@ class Top extends Module{
 
 
   // ReOrder
-  Commit.io.EnA <> RegMap.io.out_A
-  Commit.io.EnB <> RegMap.io.out_B
-  Commit.io.ReOrderNumA <> RegMap.io.num_A //ReorderNumA改成了num_A
-  Commit.io.ReOrderNumB <> RegMap.io.num_B
+  Commit.io.EnA <> RegMap.io.RMDPA
+  Commit.io.EnB <> RegMap.io.RMDPB
+  Commit.io.ReOrderNumA <> RegMap.io.ReOrderNumA //ReorderNumA改成了num_A
+  Commit.io.ReOrderNumB <> RegMap.io.ReOrderNumB
   Commit.io.FinA <> RegRead.io.FinA
   Commit.io.FinB <> RegRead.io.FinB
   Commit.io.FinC <> Execute.io.FinC
   Commit.io.FinD <> Execute.io.FinD
   Commit.io.FinE <> Memory.io.FinE
   Commit.io.CmtA <> InstFetch.io.CmtA
-  Commit.io.CmtA <> RegMap.io.cmt_A//CmtA改成了cmt_A
-  Commit.io.CmtB <> RegMap.io.cmt_B
+  Commit.io.CmtA <> RegMap.io.CmtA//CmtA改成了cmt_A
+  Commit.io.CmtB <> RegMap.io.CmtB
   Commit.io.CmtA <> Memory.io.CmtA
 
   // dispatch
-  Dispatch.io.regstate <> RegMap.io.regstate //PhyRegStates改成了regstate
+  Dispatch.io.regstate <> RegMap.io.PhyRegStates //PhyRegStates改成了regstate
 
   // map execute
-  RegMap.io.fin_A <> RegRead.io.FinA //RegMap中FinA改成了fin_A
-  RegMap.io.fin_B <> RegRead.io.FinB
-  RegMap.io.fin_C <> Execute.io.FinC
-  RegMap.io.fin_D <> Execute.io.FinD
-  RegMap.io.fin_E <> Memory.io.FinE
+  RegMap.io.FinA <> RegRead.io.FinA //RegMap中FinA改成了fin_A
+  RegMap.io.FinB <> RegRead.io.FinB
+  RegMap.io.FinC <> Execute.io.FinC
+  RegMap.io.FinD <> Execute.io.FinD
+  RegMap.io.FinE <> Memory.io.FinE
   RegRead.io.FinC <> Execute.io.FinC
   RegRead.io.FinD <> Execute.io.FinD
   RegRead.io.FinE <> Memory.io.FinE
@@ -124,12 +130,12 @@ class Top extends Module{
   io.fetchBlock := Dispatch.io.fetchblock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
-  enable <> RegMap.io.enable//RegMap和Dispatch的FetchBlock改成了enable
+  FetchBlock <> RegMap.io.FetchBlock//RegMap和Dispatch的FetchBlock改成了enable
 
   // rollback
   Commit.io.Rollback <> InstFetch.io.Rollback
   Commit.io.Rollback <> InstDecode.io.Rollback
-  Commit.io.Rollback <> RegMap.io.rollback //Rollback改成了rollback
+  Commit.io.Rollback <> RegMap.io.Rollback //Rollback改成了rollback
   Commit.io.Rollback <> Dispatch.io.rollback
   Commit.io.Rollback <> RegRead.io.Rollback
   Commit.io.Rollback <> Execute.io.Rollback
@@ -167,6 +173,10 @@ class TopWithMemory extends Module {
     val pc = Output(UInt(64.W))        // 暴露PC值
     val instA = Output(UInt(32.W))     // 暴露第一条指令
     val instB = Output(UInt(32.W))     // 暴露第二条指令
+    val writeEnable = Output(Bool()) // 暴露写使能信号
+    val writeAddr = Output(UInt(64.W)) // 暴露写地址
+    val writeData = Output(UInt(32.W)) // 暴露写数据
+
     val fetch_instA =Output(UInt(32.W))
     val fetch_instB =Output(UInt(32.W))
     val regMap_instA = Output(UInt(32.W))
@@ -187,6 +197,8 @@ class TopWithMemory extends Module {
     val regMap_pre3 =  Output(UInt(7.W))
     val regMap_pre2 =  Output(UInt(7.W))
     val regMap_pre4 =  Output(UInt(7.W))
+    val regMap_regdesA = Output(UInt(5.W))
+    val regMap_regdesB = Output(UInt(5.W))
     val regMap_cmtdesA = Output(UInt(7.W))
     val regMap_cmtdesB = Output(UInt(7.W))
     val regMap_pregdesA = Output(UInt(7.W))
@@ -195,16 +207,52 @@ class TopWithMemory extends Module {
     val decode_reg2 =  Output(UInt(5.W))
     val decode_reg3 =  Output(UInt(5.W))
     val decode_reg4 =  Output(UInt(5.W))
+
+    val com_pc =Output(UInt(64.W))
     val src1 = Output(UInt(32.W))
     val src2 = Output(UInt(32.W))
     val src3 = Output(UInt(32.W))
     val src4 = Output(UInt(32.W))
+    val com_presrc1 = Output(UInt(7.W))
+    val com_presrc2 = Output(UInt(7.W))
+    val com_presrc3 = Output(UInt(7.W))
+    val com_presrc4 = Output(UInt(7.W))
+    val com_cmtdesA = Output(UInt(7.W))
+    val com_cmtdesB = Output(UInt(7.W))
+    val com_predesA = Output(UInt(7.W))
+    val com_predesB = Output(UInt(7.W))
+    val com_dataA = Output(UInt(32.W))
+    val com_dataB = Output(UInt(32.W))
+    val com_instA = Output(UInt(32.W))
+    val com_instB = Output(UInt(32.W))
     val read_instA = Output(UInt(32.W))
     val read_instB = Output(UInt(32.W))
+
+    val fin_A_inst = Output(UInt(64.W))
+    val fin_B_inst = Output(UInt(64.W))
+    val fin_C_inst = Output(UInt(64.W))
+    val fin_D_inst = Output(UInt(64.W))
+    val fin_E_inst = Output(UInt(64.W))
+
     val fin_A_jumptarget = Output(UInt(64.W))
     val fin_A_branchtarget = Output(UInt(64.W))
     val fin_B_jumptarget = Output(UInt(64.W))
     val fin_B_branchtarget = Output(UInt(64.W))
+
+    val fin_A_wbdata = Output(UInt(32.W))
+    val fin_B_wbdata = Output(UInt(32.W))
+    val fin_C_wbdata = Output(UInt(32.W))
+    val fin_D_wbdata = Output(UInt(32.W))
+    val fin_E_wbdata = Output(UInt(32.W))
+
+    val finA_pregdes = Output(UInt(7.W))
+    val finB_pregdes = Output(UInt(7.W))
+    val finC_pregdes = Output(UInt(7.W))
+    val finD_pregdes = Output(UInt(7.W))
+    val finE_pregdes = Output(UInt(7.W))
+
+    val fin_C_finish = Output(Bool())
+    val fin_C_pregdes = Output(UInt(32.W))
     val com_rollback =Output(Bool())
   })
 
@@ -216,6 +264,10 @@ class TopWithMemory extends Module {
   cpu.io.Inst_A := data_memory.io.mem_id.inst(0)
   cpu.io.Inst_B := data_memory.io.mem_id.inst(1)
   data_memory.io.ex_mem.writeEn := cpu.io.DataRam.data_wen
+  io.writeEnable := cpu.io.DataRam.data_wen // 暴露写使能信号
+  io.writeAddr := cpu.io.DataRam.data_address // 暴露写地址
+  io.writeData := cpu.io.DataRam.data_wdata // 暴露写数据
+
   data_memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
   data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata
   cpu.io.DataRam.data_rdata := data_memory.io.mem_lsu.data
@@ -244,6 +296,8 @@ class TopWithMemory extends Module {
   io.regMap_pre2 := cpu.io.map_inst_A.pregsrc2
   io.regMap_pre3 := cpu.io.map_inst_B.pregsrc1
   io.regMap_pre4 := cpu.io.map_inst_B.pregsrc1
+  io.regMap_regdesA := cpu.io.map_inst_A.regdes
+  io.regMap_regdesB := cpu.io.map_inst_B.regdes
   io.regMap_pregdesA := cpu.io.map_inst_A.pregdes
   io.regMap_pregdesB := cpu.io.map_inst_B.pregdes
   io.regMap_cmtdesA := cpu.io.map_inst_A.cmtdes
@@ -253,17 +307,52 @@ class TopWithMemory extends Module {
   io.dis_instB := cpu.io.dispatch_inst_B.inst
   io.dis_instC := cpu.io.dispatch_inst_C.inst
 
-  io.src1 := cpu.io.read_inst_A.src1
-  io.src2 := cpu.io.read_inst_A.src2
-  io.src3 := cpu.io.read_inst_B.src1
-  io.src4 := cpu.io.read_inst_B.src2
+  io.com_pc :=cpu.io.com_inst_A.pc
+  io.src1 := cpu.io.com_inst_A.src1
+  io.src2 := cpu.io.com_inst_A.src2
+  io.src3 := cpu.io.com_inst_B.src1
+  io.src4 := cpu.io.com_inst_B.src2
+  io.com_presrc1 := cpu.io.com_inst_A.pregsrc1
+  io.com_presrc2 := cpu.io.com_inst_A.pregsrc2
+  io.com_presrc3 := cpu.io.com_inst_B.pregsrc1
+  io.com_presrc4 := cpu.io.com_inst_B.pregsrc2
+  io.com_cmtdesA := cpu.io.com_inst_A.cmtdes
+  io.com_cmtdesB := cpu.io.com_inst_B.cmtdes
+  io.com_predesA := cpu.io.com_inst_A.pregdes
+  io.com_predesB := cpu.io.com_inst_B.pregdes
+  io.com_instA := cpu.io.com_inst_A.inst
+  io.com_instB := cpu.io.com_inst_B.inst
+
+  io.com_dataA :=cpu.io.com_inst_A.wbdata
+  io.com_dataB :=cpu.io.com_inst_B.wbdata
   io.read_instA := cpu.io.read_inst_A.inst
   io.read_instB := cpu.io.read_inst_B.inst
+
+  io.fin_A_inst := cpu.io.fin_A.inst
+  io.fin_B_inst := cpu.io.fin_B.inst
+  io.fin_C_inst := cpu.io.fin_C.inst
+  io.fin_D_inst := cpu.io.fin_D.inst
+  io.fin_E_inst := cpu.io.fin_E.inst
+
+  io.fin_A_wbdata := cpu.io.fin_A.wbdata
+  io.fin_B_wbdata := cpu.io.fin_B.wbdata
+  io.fin_C_wbdata := cpu.io.fin_C.wbdata
+  io.fin_D_wbdata := cpu.io.fin_D.wbdata
+  io.fin_E_wbdata := cpu.io.fin_E.wbdata
+
+  io.finA_pregdes := cpu.io.fin_A.pregdes
+  io.finB_pregdes := cpu.io.fin_B.pregdes
+  io.finC_pregdes := cpu.io.fin_C.pregdes
+  io.finD_pregdes := cpu.io.fin_D.pregdes
+  io.finE_pregdes := cpu.io.fin_E.pregdes
+
   io.fin_A_jumptarget := cpu.io.fin_A.jump.actTarget
   io.fin_A_branchtarget := cpu.io.fin_A.branch.target
   io.fin_B_jumptarget := cpu.io.fin_B.jump.actTarget
   io.fin_B_branchtarget := cpu.io.fin_B.branch.target
+  io.fin_C_pregdes := cpu.io.fin_C.pregdes
 
+  io.fin_C_finish := cpu.io.fin_C.finish
   io.fetchblock := cpu.io.fetchBlock
   io.com_jumppcA := cpu.io.com_inst_A.jump.actTarget
   io.com_jumppcB := cpu.io.com_inst_B.jump.actTarget

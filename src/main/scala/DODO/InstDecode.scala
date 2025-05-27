@@ -154,7 +154,7 @@ class Decoder extends Module {
   val I = io.inst(31, 20)
   val B = Cat(io.inst(31), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))
   val S = Cat(io.inst(31, 25), io.inst(11, 7))
-  val U = io.inst(31, 12)
+  val U = Cat(io.inst(31,12), 0.U(12.W))
   val J = Cat(io.inst(31), io.inst(19, 12), io.inst(20), io.inst(30, 21), 0.U(1.W))
   val Z = 0.U(32.W)
 

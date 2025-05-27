@@ -42,7 +42,7 @@ class InstFetch extends Module {
 
 
   // ------------------ PC 更新逻辑（支持双发射分支预测，含冲突处理） ------------------
-  val PC = RegInit("h0000000080000000".U(64.W)) // PC 寄存器，初始值为 0x80000000
+  val PC = RegInit("h80000000".U(32.W)) // PC 寄存器，初始值为 0x80000000
 
 
   val branch_true_target = Wire(UInt(64.W))
