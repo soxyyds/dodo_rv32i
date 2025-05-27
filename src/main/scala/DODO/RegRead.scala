@@ -190,9 +190,9 @@ class BranchJumpUnit extends Module{
   val blt = io.isa.BLT && (io.src1.asSInt < io.src2.asSInt)
 
   //计算 分支目标地址&预测的跳转目标地址
-  val b_target = io.pc + io.imm.B
-  val jal_target = io.pc + io.imm.J
-  val jalr_target = io.src1 + io.imm.I
+  val b_target = (io.pc + io.imm.B)(31,0)
+  val jal_target = (io.pc + io.imm.J)(31,0)
+  val jalr_target = ((io.src1 + io.imm.I) & "hfffffffffffffffe".U(64.W))(31,0) //确保地址对齐
 
   //获取并综合跳转信息
   io.jump.Valid := io.isa.JAL || io.isa.JALR
