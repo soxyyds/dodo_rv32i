@@ -14,6 +14,7 @@ class dispatch extends Module{
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
     //在这里面需要建立两个发射队列reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
+    val reserve = Output(Vec(16, new InstCtrlBlock))
     val regstate = Input(UInt(128.W))
     val fetchblock = Output(Bool())
     val rollback = Input(Bool())
@@ -50,6 +51,7 @@ class dispatch extends Module{
   intquene.io.rollback <> io.rollback
   memquene.io.rollback <> io.rollback
   io.fetchblock := (intquene.io.intfull || memquene.io.memfull)
+  io.reserve := intquene.io.reserve
 }
 //首先创建两个保留站
 //1：整形保留站
@@ -59,12 +61,13 @@ class intquene extends Module{
     val intquene_in_B = Input(new InstCtrlBlock)
     val intquene_out_A = Output(new InstCtrlBlock)
     val intquene_out_B = Output(new InstCtrlBlock)
+    val reserve = Output(Vec(16, new InstCtrlBlock))
     val regstate = Input(UInt(128.W))
     val rollback = Input(Bool())
     val intfull = Output(Bool())
   })
   //在这个保留站里面，我们很需要指向标还有存储站，指令标有两个，一个为入队另一个则为出队,还有堆满的信号
-  val reserve: Vec[InstCtrlBlock]  = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val reserve= RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
   //首先把16个槽位的空闲状态通过genfreelist用16位01指令表示出来，然后取最低的即为进队的point，并且取2对数
   val freelist_A: UInt = genfreelist_A()
   val freelist_B: UInt = freelist_A - lowbit(freelist_A)
@@ -101,8 +104,8 @@ class intquene extends Module{
     io.intquene_out_A :=  WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     io.intquene_out_B :=  WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }.otherwise{
-    reserve(in_point_A) := io.intquene_in_A
-    reserve(in_point_B) := io.intquene_in_B
+    when(lowbit(freelist_A) =/= 0.U){reserve(in_point_A) := io.intquene_in_A}
+    when(lowbit(freelist_B) =/= 0.U){reserve(in_point_B) := io.intquene_in_B}
 
     when(lowbit(readylist_A) =/=0.U){
       io.intquene_out_A := reserve (out_point_A)
@@ -118,7 +121,7 @@ class intquene extends Module{
   //freelist_B := freelist_A - lowbit(freelist_A)
   //  in_point_A := Log2(lowbit(freelist_A))
   // in_point_B := Log2(lowbit(freelist_B))
-
+  io.reserve := reserve
 }
 //2：访存保留站
 class memquene extends Module{
@@ -143,25 +146,28 @@ class memquene extends Module{
     for(i <- 0 to 15) {
       reserve(i) := 0.U.asTypeOf(new InstCtrlBlock())  // 清除所有条目
     }
-  }.elsewhen(io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
-    reserve(in_point) := io.memquene_in_A
-    reserve(in_point + 1.U) := io.memquene_in_B
-    in_point := in_point + 2.U
-  }.elsewhen(!io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
-    reserve(in_point) := io.memquene_in_B
-    in_point := in_point + 1.U
-  }.elsewhen(io.memquene_in_A.Valid && !io.memquene_in_B.Valid) {
-    reserve(in_point) := io.memquene_in_A
-    in_point := in_point + 1.U
+    io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+  }.otherwise{
+    when(io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
+      reserve(in_point) := io.memquene_in_A
+      reserve(in_point + 1.U) := io.memquene_in_B
+      in_point := in_point + 2.U
+    }.elsewhen(!io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
+      reserve(in_point) := io.memquene_in_B
+      in_point := in_point + 1.U
+    }.elsewhen(io.memquene_in_A.Valid && !io.memquene_in_B.Valid) {
+      reserve(in_point) := io.memquene_in_A
+      in_point := in_point + 1.U
+    }
+    when(!io.rollback && (reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2))){
+      io.memquene_out_C := reserve(out_point)
+      reserve(out_point) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      out_point := out_point + 1.U
+    }.otherwise{
+      io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    }
   }
   //这里out_point指针指向的是要出站的指令位置，但是要出去必须就绪才可以出去，于是要看它的物理寄存器是否就绪
-  when(!io.rollback && (reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2))){
-    io.memquene_out_C := reserve(out_point)
-    reserve(out_point) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    out_point := out_point + 1.U
-  }.otherwise{
-    io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-  }
 }
 object lowbit {
   def apply(data: UInt): UInt = {
