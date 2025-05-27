@@ -13,7 +13,7 @@ module BindsTo_0_mem(
 );
 
 initial begin
-  $readmemh("G:\\testdata\\dhrystone_0.data", mem.memInside_0);
+  $readmemh("C:\\Users\\Lenovo\\Desktop\\Code\\chisel3.5\\src\\main\\dhrystone\\dhrystone_0.data", mem.memInside_0);
 end
                       endmodule
 
