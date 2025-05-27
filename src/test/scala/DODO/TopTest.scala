@@ -12,7 +12,7 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.setTimeout(0) // 禁用超时
       println("开始执行DHRYSTONE基准测试...")
 
-      val maxCycles = 60000
+      val maxCycles = 44000
       for (cycle <- 1 to maxCycles) {
         // 直接从顶层IO访问PC和指令
         val pc = dut.io.pc.peek().litValue()
@@ -47,11 +47,10 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
         val decode_reg3 = dut.io.decode_reg3.peek().litValue()
         val decode_reg4 = dut.io.decode_reg4.peek().litValue()
         val com_rollback =dut.io.com_rollback.peek().litValue()
-        val targetInst = 0x00100d93L
-        val currentDetection = (dut.io.com_instA.peek().litValue() == targetInst || dut.io.com_instB.peek().litValue() == targetInst)
-        if(cycle % 5000 ==0 || currentDetection) {
+
+        if(cycle % 5000 ==0 || cycle >= 43500) {
           println(f"周期 $cycle: PC=0x${pc}%016X, InstA=0x${instA}%08X, InstB=0x${instB}%08X, fetch_instA=0x${fetch_instA}%08X,fetch_instB=0x${fetch_instB}%08X")
-          //   println(f"map_instA=0x${map_instA}%08X,map_instB=0x${map_instB}%08X,dis_instA=0x${dis_instA}%08X,dis_instB=0x${dis_instB}%08X,dis_instC=0x${dis_instC}%08X,fetchblock=${fetchblock}%08X")
+          println(f"map_instA=0x${map_instA}%08X,map_instB=0x${map_instB}%08X,dis_instA=0x${dis_instA}%08X,dis_instB=0x${dis_instB}%08X,dis_instC=0x${dis_instC}%08X,fetchblock=${fetchblock}%08X")
           //   println(f"跳转信号：com_jumppcA=0x${com_jumppcA}%08X,com_jumppcB=0x${com_jumppcB}%08X,com_bpPredTargetA=0x${com_bpPredTargetA}%08X,com_bpPredTargetB=0x${com_bpPredTargetB}%08X,Rollback=0x${com_rollback}%08X,")
           //   println(f"：regMap_reg1=0x${regMap_reg1}%08X,regMap_reg2=0x${regMap_reg2}%08X,regMap_reg3=0x${regMap_reg3}%08X,regMap_reg4=0x${regMap_reg4}%08X,")
           //   println(f"：regMap_pre1=0x${regMap_pre1}%08X,regMap_pre2=0x${regMap_pre2}%08X,regMap_pre3=0x${regMap_pre3}%08X,regMap_pre4=0x${regMap_pre4}%08X,")

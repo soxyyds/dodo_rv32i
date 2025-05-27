@@ -155,7 +155,7 @@ class memquene extends Module{
     in_point := in_point + 1.U
   }
   //这里out_point指针指向的是要出站的指令位置，但是要出去必须就绪才可以出去，于是要看它的物理寄存器是否就绪
-  when(reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2)){
+  when(!io.rollback && (reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2))){
     io.memquene_out_C := reserve(out_point)
     reserve(out_point) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     out_point := out_point + 1.U

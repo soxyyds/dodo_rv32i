@@ -257,7 +257,7 @@ class TopWithMemory extends Module {
   })
 
   val cpu = Module(new Top)
-  val data_memory = Module(new mem(memDepth = 1024, instWidth = 2))
+  val data_memory = Module(new mem(memDepth = 65536, instWidth = 2))
 
   // 现有连接保持不变
   data_memory.io.if_mem.instAddr := cpu.io.pc
