@@ -11,6 +11,8 @@ class Top extends Module{
     val Inst_A = Input(UInt(32.W))
     val Inst_B = Input(UInt(32.W))
     val DataRam = new RAMHelperIO_2
+    val mem_inst = Output(new InstCtrlBlock) // 内存指令提交
+    val mem_Valid = Output(Bool()) // 内存指令的有效性
     //test
     val fetch_inst_A = Output(new InstCtrlBlock)
     val fetch_inst_B = Output(new InstCtrlBlock)
@@ -32,7 +34,7 @@ class Top extends Module{
     val com_inst_B = Output(new InstCtrlBlock)
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
     val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
-    val com_bank = Output(Vec(64, new InstCtrlBlock()))
+  //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
     val fin_C = Output(new InstCtrlBlock)
@@ -78,7 +80,9 @@ class Top extends Module{
   io.fin_E := Memory.io.FinE
   io.com_DeQueuePointer := Commit.io.DeQueuePointer // 提交阶段的寄存器指针
   io.com_EnQueuePointer := Commit.io.EnQueuePointer // 提交阶段的队列指针
-  io.com_bank := Commit.io.Bank
+//  io.com_bank := Commit.io.Bank
+  io.mem_inst := Memory.io.mem_inst
+  io.mem_Valid := Memory.io.mem_Valid
 
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
@@ -270,7 +274,14 @@ class TopWithMemory extends Module {
     val fin_C_finish = Output(Bool())
     val fin_C_pregdes = Output(UInt(32.W))
     val com_rollback =Output(Bool())
-    val com_bank = Output(Vec(64, new InstCtrlBlock()))
+    val mem_writeEnable = Output(Bool()) // 暴露内存写使能信号
+    val mem_writeAddr = Output(UInt(64.W)) // 暴露内存写地址
+    val mem_writeData = Output(UInt(32.W)) // 暴露内存写数据
+    val mem_func3 = Output(UInt(3.W)) // 暴露内存读地址
+    val mem_rdata = Output(UInt(32.W)) // 暴露内存读数据
+    val mem_inst = Output(UInt(32.W)) // 暴露内存指令提交
+    val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
+//    val com_bank = Output(Vec(64, new InstCtrlBlock()))
   })
 
   val cpu = Module(new Top)
@@ -386,7 +397,14 @@ class TopWithMemory extends Module {
   io.com_branchtakenB := cpu.io.com_inst_B.branch.Valid
   io.com_EnQueuePointer := cpu.io.com_EnQueuePointer // 提交阶段的队列指针
   io.com_DeQueuePointer := cpu.io.com_DeQueuePointer // 提交阶段的寄存器指针
-  io.com_bank := cpu.io.com_bank // 暴露
+ // io.com_bank := cpu.io.com_bank // 暴露
+  io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
+  io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
+  io.mem_writeData := cpu.io.DataRam.data_wdata // 暴露内存写数据
+  io.mem_rdata := data_memory.io.mem_lsu.data // 暴露内存读数据
+  io.mem_func3 := data_memory.io.ex_mem.func3 // 暴露内存读地址
+  io.mem_Valid := cpu.io.mem_Valid // 暴露内存指令的有效性
+  io.mem_inst := cpu.io.mem_inst.inst // 暴露内存指令提交
 }
 
 object ExVerilog extends App {

@@ -51,7 +51,7 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
   //      val com_reorderNumB = dut.io.com_reorderNumB.peek().litValue()
         var last_fetchblock = 0
 
-       if(cycle >= 14500 ) {
+     //  if(cycle >= 14500 ) {
 
            println(f"周期 $cycle: PC=0x${pc}%016X, InstA=0x${instA}%08X, InstB=0x${instB}%08X,fetchblock=${fetchblock}%08X,")
            //     println(f"map_instA=0x${map_instA}%08X,map_instB=0x${map_instB}%08X,dis_instA=0x${dis_instA}%08X,dis_instB=0x${dis_instB}%08X,dis_instC=0x${dis_instC}%08X,fetchblock=${fetchblock}%08X,")
@@ -73,19 +73,22 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
            //    println(f"fin_E=0x${dut.io.fin_E_inst.peek().litValue()}%016X,finE_wbdata=0x${dut.io.fin_E_wbdata.peek().litValue()}%016X, fin_E_predes=0x${dut.io.finE_pregdes.peek().litValue()}%016X")
            //   println(f"")
            // println(f"fin_B_jumptarget=0x${dut.io.fin_B_jumptarget.peek().litValue()}%016X, fin_B_branchtarget=0x${dut.io.fin_B_branchtarget.peek().litValue()}%016X,")
-           println(f"pc=0x${dut.io.com_pc.peek().litValue()}%08X, src1=0x${dut.io.src1.peek().litValue()}%08X, src2=0x${dut.io.src2.peek().litValue()}%08X, src3=0x${dut.io.src3.peek().litValue()}%08X, src4=0x${dut.io.src4.peek().litValue()}%08X")
+       //    println(f"pc=0x${dut.io.com_pc.peek().litValue()}%08X, src1=0x${dut.io.src1.peek().litValue()}%08X, src2=0x${dut.io.src2.peek().litValue()}%08X, src3=0x${dut.io.src3.peek().litValue()}%08X, src4=0x${dut.io.src4.peek().litValue()}%08X")
+           if(dut.io.mem_Valid.peek().litValue==1){
+             println(f"mem_inst=0x${dut.io.mem_inst.peek().litValue()}%08X, mem_wdata=0x${dut.io.mem_writeData.peek().litValue()}%08X, mem_fun3=0x${dut.io.mem_func3.peek().litValue()}%08X, mem_addr=0x${dut.io.writeAddr.peek().litValue()}%08X, mem_writeEnable=${dut.io.mem_writeEnable.peek().litValue()},mem_rdata=0x${dut.io.mem_rdata.peek().litValue()}%08X")
+           }
            //       println(f"com_EnQueuePointer=0x${dut.io.com_EnQueuePointer.peek().litValue()}%08X,com_DeQueuePointer=0x${dut.io.com_DeQueuePointer.peek().litValue()}%08X, ")
-           if(dut.io.com_instA .peek().litValue() != 0) {println(f"com_instA=0x${dut.io.com_instA.peek().litValue()}%08X")}
-           if(dut.io.com_instB .peek().litValue() != 0) {println(f"com_instB=0x${dut.io.com_instB.peek().litValue()}%08X")}
+           if(dut.io.com_instA .peek().litValue() != 0) {println(f"com_instA=0x${dut.io.com_instA.peek().litValue()}%08X,com_dataA=0x${dut.io.com_dataA.peek().litValue()}%08X")}
+           if(dut.io.com_instB .peek().litValue() != 0) {println(f"com_instB=0x${dut.io.com_instB.peek().litValue()}%08X,com_dataB=0x${dut.io.com_dataB.peek().litValue()}%08X")}
            //     println(f"com_reorderNumA=0x${com_reorderNumA}%08X, com_reorderNumB=0x${com_reorderNumB}%08X, com_rollback=${com_rollback}")
            //      println(f"")
            //  if(cycle >= 7400 && cycle <=12000) {
-           if(fetchblock ==1 && last_fetchblock ==0 ){
-             for(i <-0 to 63){ if(dut.io.com_bank(i).Valid.peek().litValue() ==1 && dut.io.com_bank(i).finish.peek().litValue() !=1){ println(f"com_bank_inst(${i})=0x${dut.io.com_bank(i).inst.peek().litValue()}%08X,com_bank_finish(${i})=0x${dut.io.com_bank(i).finish.peek().litValue()}%08X")}}
-           }
-           last_fetchblock = dut.io.fetchblock.peek().litValue().toInt
-         println(f"com_dataA=0x${dut.io.com_dataA.peek().litValue()}%08X,com_dataB=0x${dut.io.com_dataB.peek().litValue()}%08X,")
-       }
+          // if(fetchblock ==1 && last_fetchblock ==0 ){
+       //      for(i <-0 to 63){ if(dut.io.com_bank(i).Valid.peek().litValue() ==1 && dut.io.com_bank(i).finish.peek().litValue() !=1){ println(f"com_bank_inst(${i})=0x${dut.io.com_bank(i).inst.peek().litValue()}%08X,com_bank_finish(${i})=0x${dut.io.com_bank(i).finish.peek().litValue()}%08X")}}
+       //    }
+    //       last_fetchblock = dut.io.fetchblock.peek().litValue().toInt
+     //    println(f"com_dataA=0x${dut.io.com_dataA.peek().litValue()}%08X,com_dataB=0x${dut.io.com_dataB.peek().litValue()}%08X,")
+     //  }
  //         for(i <-0 to 0){ if(dut.io.com_bank(i).Valid.peek().litValue() ==1){ println(f"com_bank_inst(${i})=0x${dut.io.com_bank(i).inst.peek().litValue()}%08X,com_bank_finish(${i})=0x${dut.io.com_bank(i).finish.peek().litValue()}%08X")}}
  //         println(f"")
  //         println(f"presrc1=0x${dut.io.com_presrc1.peek().litValue()}%08X, pregsrc2=0x${dut.io.com_presrc2.peek().litValue()}%08X, pregsrc3=0x${dut.io.com_presrc3.peek().litValue()}%08X, pregsrc4=0x${dut.io.com_presrc4.peek().litValue()}%08X")
