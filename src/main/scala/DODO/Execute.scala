@@ -197,7 +197,7 @@ class AddressGenerationUnit extends Module{
   io.store.data := SW_data | SH_data | SB_data
   val byte_mask = Wire(UInt(3.W)) // 3位掩码编码
   when(io.isa.SW || io.isa.LW) {
-    byte_mask := 2.U  // SW指令编码为2
+    byte_mask := 2.U  // SW指令编码为
   }.elsewhen(io.isa.SH || io.isa.LH || io.isa.LHU) { // SH指令
     byte_mask := 1.U  // SH指令编码为1
   }.otherwise {       // SB指令

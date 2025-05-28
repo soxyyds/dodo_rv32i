@@ -12,7 +12,7 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
       dut.clock.setTimeout(0) // 禁用超时
       println("开始执行DHRYSTONE基准测试...")
 
-      val maxCycles = 16000
+      val maxCycles = 7000
       for (cycle <- 1 to maxCycles) {
         // 直接从顶层IO访问PC和指令
         val pc = dut.io.pc.peek().litValue()
@@ -73,9 +73,9 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
            //    println(f"fin_E=0x${dut.io.fin_E_inst.peek().litValue()}%016X,finE_wbdata=0x${dut.io.fin_E_wbdata.peek().litValue()}%016X, fin_E_predes=0x${dut.io.finE_pregdes.peek().litValue()}%016X")
            //   println(f"")
            // println(f"fin_B_jumptarget=0x${dut.io.fin_B_jumptarget.peek().litValue()}%016X, fin_B_branchtarget=0x${dut.io.fin_B_branchtarget.peek().litValue()}%016X,")
-       //    println(f"pc=0x${dut.io.com_pc.peek().litValue()}%08X, src1=0x${dut.io.src1.peek().litValue()}%08X, src2=0x${dut.io.src2.peek().litValue()}%08X, src3=0x${dut.io.src3.peek().litValue()}%08X, src4=0x${dut.io.src4.peek().litValue()}%08X")
+           println(f"pc=0x${dut.io.com_pc.peek().litValue()}%08X, src1=0x${dut.io.src1.peek().litValue()}%08X, src2=0x${dut.io.src2.peek().litValue()}%08X, src3=0x${dut.io.src3.peek().litValue()}%08X, src4=0x${dut.io.src4.peek().litValue()}%08X")
            if(dut.io.mem_Valid.peek().litValue==1){
-             println(f"mem_inst=0x${dut.io.mem_inst.peek().litValue()}%08X, mem_wdata=0x${dut.io.mem_writeData.peek().litValue()}%08X, mem_fun3=0x${dut.io.mem_func3.peek().litValue()}%08X, mem_addr=0x${dut.io.writeAddr.peek().litValue()}%08X, mem_writeEnable=${dut.io.mem_writeEnable.peek().litValue()},mem_rdata=0x${dut.io.mem_rdata.peek().litValue()}%08X")
+             println(f"mem_inst=0x${dut.io.mem_inst.peek().litValue()}%08X, mem_wdata=0x${dut.io.mem_writeData.peek().litValue()}%08X, mem_fun3_write=0x${dut.io.mem_func3_write.peek().litValue()}%08X, mem_fun3_write=0x${dut.io.mem_func3_write.peek().litValue()}%08X,mem_addr=0x${dut.io.writeAddr.peek().litValue()}%08X, mem_writeEnable=${dut.io.mem_writeEnable.peek().litValue()},mem_readaddr=0x${dut.io.mem_readAddr.peek().litValue()}%08X,mem_rdata=0x${dut.io.mem_rdata.peek().litValue()}%08X")
            }
            //       println(f"com_EnQueuePointer=0x${dut.io.com_EnQueuePointer.peek().litValue()}%08X,com_DeQueuePointer=0x${dut.io.com_DeQueuePointer.peek().litValue()}%08X, ")
            if(dut.io.com_instA .peek().litValue() != 0) {println(f"com_instA=0x${dut.io.com_instA.peek().litValue()}%08X,com_dataA=0x${dut.io.com_dataA.peek().litValue()}%08X")}

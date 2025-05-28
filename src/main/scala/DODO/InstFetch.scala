@@ -130,10 +130,12 @@ class RAMHelperIO_2 extends Bundle {
   // 指令读取使能是memory相关的东西，true的时候需要在指定的地址处返回指令的数据
   // 数据存入端口信号
   //其实大概分为六类 读使能 地址 数据   写使能 地址 数据
+  val read_address = Output(UInt(64.W)) // 指令地址（字节地址），输出当前需要读取的指令地址（字节地址）
   val data_address   = Output(UInt(64.W)) // 数据地址（字节地址）需要存入或者取出的数据的地址
   val data_wen    = Output(Bool())     // 写使能，数据写的信号，决定是否可以存入的信号，这个由cmtable决定
   val data_wdata  = Output(UInt(64.W)) // 写入数据，需要存入存储器的数据
-  val func3  = Output(UInt(3.W))  // 字节写掩码
+  val func3_write  = Output(UInt(3.W))  // 字节写掩码
+  val func3_read   = Output(UInt(3.W))  // 字节读掩码
   val data_rdata  = Input(UInt(64.W))//读取的使能信号是受dataAddr 和 func3 有效和wen信号控制的
   // 原子操作标志
 }

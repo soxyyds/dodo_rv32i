@@ -276,8 +276,10 @@ class TopWithMemory extends Module {
     val com_rollback =Output(Bool())
     val mem_writeEnable = Output(Bool()) // 暴露内存写使能信号
     val mem_writeAddr = Output(UInt(64.W)) // 暴露内存写地址
+    val mem_readAddr = Output(UInt(64.W)) // 暴露内存读地址
     val mem_writeData = Output(UInt(32.W)) // 暴露内存写数据
-    val mem_func3 = Output(UInt(3.W)) // 暴露内存读地址
+    val mem_func3_write = Output(UInt(3.W)) // 暴露内存读地址
+    val mem_func3_read = Output(UInt(3.W)) // 暴露内存读功能码
     val mem_rdata = Output(UInt(32.W)) // 暴露内存读数据
     val mem_inst = Output(UInt(32.W)) // 暴露内存指令提交
     val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
@@ -296,10 +298,12 @@ class TopWithMemory extends Module {
   io.writeAddr := cpu.io.DataRam.data_address // 暴露写地址
   io.writeData := cpu.io.DataRam.data_wdata // 暴露写数据
 
-  data_memory.io.ex_mem.dataAddr := cpu.io.DataRam.data_address
+  data_memory.io.ex_mem.dataAddr_wirte := cpu.io.DataRam.data_address
+  data_memory.io.ex_mem.dataAddr_read := cpu.io.DataRam.read_address
   data_memory.io.ex_mem.writeData := cpu.io.DataRam.data_wdata
   cpu.io.DataRam.data_rdata := data_memory.io.mem_lsu.data
-  data_memory.io.ex_mem.func3 := cpu.io.DataRam.func3
+  data_memory.io.ex_mem.func3_write := cpu.io.DataRam.func3_write
+  data_memory.io.ex_mem.func3_read := cpu.io.DataRam.func3_read // 暴露功能码
   data_memory.io.reset := reset
 
   // 连接调试信号到模块输出
@@ -400,9 +404,11 @@ class TopWithMemory extends Module {
  // io.com_bank := cpu.io.com_bank // 暴露
   io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
   io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
+  io.mem_readAddr := cpu.io.DataRam.read_address // 暴露内存读地址
   io.mem_writeData := cpu.io.DataRam.data_wdata // 暴露内存写数据
   io.mem_rdata := data_memory.io.mem_lsu.data // 暴露内存读数据
-  io.mem_func3 := data_memory.io.ex_mem.func3 // 暴露内存读地址
+  io.mem_func3_write := data_memory.io.ex_mem.func3_write // 暴露内存读地址
+  io.mem_func3_read := data_memory.io.ex_mem.func3_read // 暴露内存读功能码
   io.mem_Valid := cpu.io.mem_Valid // 暴露内存指令的有效性
   io.mem_inst := cpu.io.mem_inst.inst // 暴露内存指令提交
 }

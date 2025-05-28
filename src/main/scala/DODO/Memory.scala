@@ -23,10 +23,12 @@ class Memory extends Module {
 
   // === 2. RAM 接口地址转换 ===
   //其实我们不用管mem模块里面到底有多少的信号和输出端口 我们只要关注好我们这个哈佛架构的管道到底要多少信号
+  io.DataRam.read_address := Mux(INST.load.Valid, INST.load.addr, 0.U(64.W)) //如果是load指令就用load的地址
   io.DataRam.data_wen  := (io.CmtA.Valid && io.CmtA.store.Valid)
-  io.DataRam.data_address := io.CmtA.load.addr
+  io.DataRam.data_address := Mux(io.CmtA.store.Valid, io.CmtA.store.addr, 0.U(64.W)) //如果是store指令就用store的地址，
   io.DataRam.data_wdata := io.CmtA.store.data //获取要存入里面的数据
-  io.DataRam.func3 := io.CmtA.store.mask//获取掩码 mask掩码要修改，这个mask是在execute里面生成的
+  io.DataRam.func3_write := io.CmtA.store.mask//获取掩码 mask掩码要修改，这个mask是在execute里面生成的
+  io.DataRam.func3_read := INST.store.mask //获取load的掩码
   io.mem_Valid := (io.CmtA.Valid &&(io.CmtA.store.Valid || io.CmtA.load.Valid))
   io.mem_inst := Mux(io.mem_Valid, io.CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock)))
   // === 3. Store Forwarding 拼接逻辑 ===
