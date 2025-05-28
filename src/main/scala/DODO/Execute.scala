@@ -191,14 +191,14 @@ class AddressGenerationUnit extends Module{
   io.store.addr := io.src1 + io.imm.S
 
 
-  val SW_data = io.isa.SW & io.src2(31,0)
-  val SH_data = io.isa.SH & Cat(Fill(16, io.src2(15)), io.src2(15,0))
-  val SB_data = io.isa.SB & Cat(Fill(24, io.src2(7)), io.src2(7,0))
+  val SW_data = SignExt(io.isa.SW.asUInt, 32) & io.src2(31,0)
+  val SH_data = SignExt(io.isa.SH.asUInt, 32) & Cat(Fill(16, io.src2(15)), io.src2(15,0))
+  val SB_data = SignExt(io.isa.SB.asUInt, 32) & Cat(Fill(24, io.src2(7)), io.src2(7,0))
   io.store.data := SW_data | SH_data | SB_data
   val byte_mask = Wire(UInt(3.W)) // 3位掩码编码
-  when(io.isa.SW) {
+  when(io.isa.SW || io.isa.LW) {
     byte_mask := 2.U  // SW指令编码为2
-  }.elsewhen(io.isa.SH) {
+  }.elsewhen(io.isa.SH || io.isa.LH || io.isa.LHU) { // SH指令
     byte_mask := 1.U  // SH指令编码为1
   }.otherwise {       // SB指令
     byte_mask := 0.U  // SB指令编码为0
@@ -206,15 +206,3 @@ class AddressGenerationUnit extends Module{
   io.store.mask := byte_mask
   io.store.Ready := false.B
 }//AGU
-
-// 添加Verilog生成对象
-object ExecuteVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new Execute(),
-    args = Array(
-      "-o", "Execute.v",
-      "--target-dir", "generated/Execute",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}

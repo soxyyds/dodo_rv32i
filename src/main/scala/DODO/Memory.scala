@@ -24,15 +24,17 @@ class Memory extends Module {
   // === 2. RAM 接口地址转换 ===
   //其实我们不用管mem模块里面到底有多少的信号和输出端口 我们只要关注好我们这个哈佛架构的管道到底要多少信号
   io.DataRam.data_wen  := (io.CmtA.Valid && io.CmtA.store.Valid)
-  io.DataRam.data_address := INST.load.addr
+  io.DataRam.data_address := io.CmtA.load.addr
   io.DataRam.data_wdata := io.CmtA.store.data //获取要存入里面的数据
   io.DataRam.func3 := io.CmtA.store.mask//获取掩码 mask掩码要修改，这个mask是在execute里面生成的
-  io.mem_Valid := (io.CmtA.Valid && io.CmtA.store.Valid)
+  io.mem_Valid := (io.CmtA.Valid &&(io.CmtA.store.Valid || io.CmtA.load.Valid))
   io.mem_inst := Mux(io.mem_Valid, io.CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock)))
   // === 3. Store Forwarding 拼接逻辑 ===
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
-  val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
-  val d_data = (io.DataRam.data_rdata & !wmask) | (wdata & wmask)
+ // val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
+  val d_data = Wire(UInt(64.W)) // 读取的内存数据
+  d_data := Mux(io.DataRam.data_wen, 0.U(64.W), io.DataRam.data_rdata) // 从RAM读取数据，如果没有数据则为0
+
 
   // === 4. 加载类型拼接处理 ===
   // 从64位总数据中逐级选择目标字节（load类型决定需要哪一段）
