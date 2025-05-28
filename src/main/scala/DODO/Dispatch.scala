@@ -14,7 +14,7 @@ class dispatch extends Module{
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
     //在这里面需要建立两个发射队列reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
-    val reserve = Output(Vec(16, new InstCtrlBlock))
+  //  val reserve = Output(Vec(16, new InstCtrlBlock))
     val regstate = Input(UInt(128.W))
     val fetchblock = Output(Bool())
     val rollback = Input(Bool())
@@ -51,7 +51,7 @@ class dispatch extends Module{
   intquene.io.rollback <> io.rollback
   memquene.io.rollback <> io.rollback
   io.fetchblock := (intquene.io.intfull || memquene.io.memfull)
-  io.reserve := intquene.io.reserve
+ // io.reserve := intquene.io.reserve
 }
 //首先创建两个保留站
 //1：整形保留站
@@ -61,13 +61,13 @@ class intquene extends Module{
     val intquene_in_B = Input(new InstCtrlBlock)
     val intquene_out_A = Output(new InstCtrlBlock)
     val intquene_out_B = Output(new InstCtrlBlock)
-    val reserve = Output(Vec(16, new InstCtrlBlock))
+  //  val reserve = Output(Vec(64, new InstCtrlBlock))
     val regstate = Input(UInt(128.W))
     val rollback = Input(Bool())
     val intfull = Output(Bool())
   })
   //在这个保留站里面，我们很需要指向标还有存储站，指令标有两个，一个为入队另一个则为出队,还有堆满的信号
-  val reserve= RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val reserve= RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
   //首先把16个槽位的空闲状态通过genfreelist用16位01指令表示出来，然后取最低的即为进队的point，并且取2对数
   val freelist_A: UInt = genfreelist_A()
   val freelist_B: UInt = freelist_A - lowbit(freelist_A)
@@ -81,15 +81,15 @@ class intquene extends Module{
   val out_point_B: UInt = Log2(lowbit(readylist_B))
 
   def genfreelist_A(): UInt = {
-    val freelist = Wire(Vec(16, UInt(1.W)))
-    for(i <- 0 to 15){
+    val freelist = Wire(Vec(64, UInt(1.W)))
+    for(i <- 0 to 63){
       freelist(i) := ~reserve(i).Valid
     }
     freelist.asUInt
   }//readylist需要查看代码的有效性还有依赖读的两个物理寄存器的状态是否是执行完的
   def genreadylist_A(): UInt = {
-    val readylist = Wire(Vec(16,UInt(1.W)))
-    for(i <- 0 to 15){
+    val readylist = Wire(Vec(64,UInt(1.W)))
+    for(i <- 0 to 63){
       readylist(i) := reserve(i).Valid && io.regstate(reserve(i).pregsrc1)&& io.regstate(reserve(i).pregsrc2)
     }
     readylist.asUInt
@@ -98,7 +98,7 @@ class intquene extends Module{
   //接下来就是根据是回滚还是正常去将指令插入保留站
   //如果是回滚就清空保留站，并且这个时序就不会输出对应的指令的out是一个空指令
   when(io.rollback){
-    for(i <- 0 to 15){
+    for(i <- 0 to 63){
       reserve(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     }
     io.intquene_out_A :=  WireInit(0.U.asTypeOf(new InstCtrlBlock()))
@@ -121,7 +121,7 @@ class intquene extends Module{
   //freelist_B := freelist_A - lowbit(freelist_A)
   //  in_point_A := Log2(lowbit(freelist_A))
   // in_point_B := Log2(lowbit(freelist_B))
-  io.reserve := reserve
+  //io.reserve := reserve
 }
 //2：访存保留站
 class memquene extends Module{

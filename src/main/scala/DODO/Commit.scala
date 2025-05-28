@@ -22,7 +22,8 @@ class Commit extends Module {
 
     val ForwardLoad = Input(new LoadIssue)
     val ForwardStore = Output(new StoreIssue)
-
+    val EnQueuePointer = Output(UInt(6.W)) //队尾
+    val DeQueuePointer = Output(UInt(6.W)) //队头
     val FetchBlock = Output(Bool())
     val Rollback = Output(Bool())
   })
@@ -48,7 +49,7 @@ class Commit extends Module {
   val CmtAbranch_rollback = !CmtAbranchPredTakenTRUE || (CmtAbranchPredTakenTRUE && !CmtAbranchPredTargetTRUE)
   val CmtAjump_rollback = !CmtAjumpPredTakenTRUE || (CmtAjumpPredTakenTRUE && !CmtAjumpPredTargetTRUE)
 
-  io.Rollback := (Aready && ((CmtA.jump.Valid && CmtAjump_rollback) || (CmtA.branch.Valid && CmtAbranch_rollback))) //给actTaken加了.asBool，把外面的.asBool去掉了
+  io.Rollback := (Aready && ((CmtA.jump.Valid && CmtAjump_rollback) || (CmtA.branch.Valid && CmtAbranch_rollback))) //给actTaken加了.asBool，把外面的.asBool去掉了 rollback有问题
   val CmtBisPrint = (CmtB.inst(6, 0) === "h7b".U(7.W)).asBool
   val CmtBisHalt = (CmtB.inst(6, 0) === "h6b".U(7.W)).asBool
   val CmtBisStore = CmtB.isa.Sclass.asBool
@@ -107,7 +108,10 @@ class Commit extends Module {
   when(io.CmtB.isa.CSRRW) {
     io.CmtB.csr_wdata := io.CmtB.src1
   }
-    io.Bank := Bank
+ // io.Bank := Bank
+  io.EnQueuePointer := EnQueuePointer
+  io.DeQueuePointer := DeQueuePointer
+  io.Bank := Bank
 }
 
 object CyclicShiftLeft {

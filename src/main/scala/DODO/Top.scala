@@ -30,6 +30,8 @@ class Top extends Module{
  //   val memory_inst_B = Output(new InstCtrlBlock)
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
+    val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
+    val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
     val com_bank = Output(Vec(64, new InstCtrlBlock()))
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
@@ -74,6 +76,8 @@ class Top extends Module{
   io.fin_C := Execute.io.FinC
   io.fin_D := Execute.io.FinD
   io.fin_E := Memory.io.FinE
+  io.com_DeQueuePointer := Commit.io.DeQueuePointer // 提交阶段的寄存器指针
+  io.com_EnQueuePointer := Commit.io.EnQueuePointer // 提交阶段的队列指针
   io.com_bank := Commit.io.Bank
 
   io.pc := InstFetch.io.addressout
@@ -129,10 +133,10 @@ class Top extends Module{
   // block
   val FetchBlock = (Dispatch.io.fetchblock) || Commit.io.FetchBlock
   val enable = !FetchBlock
-  io.fetchBlock := Dispatch.io.fetchblock//test
+  io.fetchBlock := FetchBlock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
-  FetchBlock <> RegMap.io.FetchBlock//RegMap和Dispatch的FetchBlock改成了enable
+  Dispatch.io.fetchblock <> RegMap.io.FetchBlock//RegMap和Dispatch的FetchBlock改成了enable
 
   // rollback
   Commit.io.Rollback <> InstFetch.io.Rollback
@@ -189,6 +193,8 @@ class TopWithMemory extends Module {
     val fetchblock = Output(Bool())
     val com_jumppcA = Output(UInt(64.W))
     val com_jumppcB = Output(UInt(64.W))
+    val com_branchtargetA = Output(UInt(64.W))
+    val com_branchtargetB = Output(UInt(64.W))
     val com_bpPredTargetA = Output(UInt(64.W))
     val com_bpPredTargetB = Output(UInt(64.W))
     val regMap_reg1 =  Output(UInt(5.W))
@@ -215,8 +221,14 @@ class TopWithMemory extends Module {
     val src2 = Output(UInt(32.W))
     val src3 = Output(UInt(32.W))
     val src4 = Output(UInt(32.W))
+    val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
+    val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
     val com_reorderNumA = Output(UInt(6.W))
     val com_reorderNumB = Output(UInt(6.W))
+    val com_bpPredTakenA = Output(Bool())
+    val com_bpPredTakenB = Output(Bool())
+    val com_branchtakenA = Output(Bool())
+    val com_branchtakenB = Output(Bool())
     val com_presrc1 = Output(UInt(7.W))
     val com_presrc2 = Output(UInt(7.W))
     val com_presrc3 = Output(UInt(7.W))
@@ -366,6 +378,14 @@ class TopWithMemory extends Module {
   io.com_bpPredTargetA := cpu.io.com_inst_A.bpPredTarget
   io.com_bpPredTargetB := cpu.io.com_inst_B.bpPredTarget
   io.com_rollback := cpu.io.rollback
+  io.com_branchtargetA := cpu.io.com_inst_A.branch.target
+  io.com_branchtargetB := cpu.io.com_inst_B.branch.target
+  io.com_bpPredTakenA := cpu.io.com_inst_A.bpPredTaken
+  io.com_bpPredTakenB := cpu.io.com_inst_B.bpPredTaken
+  io.com_branchtakenA := cpu.io.com_inst_A.branch.Valid
+  io.com_branchtakenB := cpu.io.com_inst_B.branch.Valid
+  io.com_EnQueuePointer := cpu.io.com_EnQueuePointer // 提交阶段的队列指针
+  io.com_DeQueuePointer := cpu.io.com_DeQueuePointer // 提交阶段的寄存器指针
   io.com_bank := cpu.io.com_bank // 暴露
 }
 
