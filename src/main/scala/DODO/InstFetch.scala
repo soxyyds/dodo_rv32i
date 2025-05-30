@@ -32,7 +32,7 @@ class InstFetch extends Module {
   Bp.io.ex_is_branch := io.CmtA.branch.Valid
   Bp.io.ex_is_taken := io.CmtA.branch.actTaken
   Bp.io.ex_mis_pred := io.Rollback
-  Bp.io.ex_target := io.CmtA.branch.target
+ // Bp.io.ex_target := io.CmtA.branch.target
   Bp.io.ex_pred_index := io.CmtA.bppredIndex
   Bp.io.ex_is_jump := io.CmtA.jump.Valid
 
@@ -50,6 +50,8 @@ class InstFetch extends Module {
   val jump_true_target = Wire(UInt(64.W))
   jump_true_target := io.CmtA.jump.actTarget
 
+  val true_target =Mux(io.CmtA.jump.Valid, jump_true_target, branch_true_target)
+  Bp.io.ex_target := true_target // 更新分支预测器的目标地址
   // 实现分支预测的板块，优先级:Commit 反馈 > 分支预测 > 默认顺序执行
   when(io.Rollback) {
     // 分支预测失败时，使用 Commit 提供的正确 PC,因为commit里的跳转具有强制性
@@ -70,8 +72,8 @@ class InstFetch extends Module {
   // 注：此处A优先，B预测跳转仅在A未跳转时生效。
 
   // ------------------ 指令拆分与输出逻辑（保持不变） ------------------
-  val ValidA =ENABLE
-  val ValidB = Mux(Bp.io.pred_taken_0, false.B, ENABLE)
+  val ValidA = ENABLE && (io.Inst_In_A =/= BitPat("b0000000_00000_00000_000_00000_1110011")) // NOP指令
+  val ValidB = Mux(Bp.io.pred_taken_0, false.B, ENABLE) && (io.Inst_In_B =/= BitPat("b0000000_00000_00000_000_00000_1110011"))
   val InstA = io.Inst_In_A
   val InstB = Mux(Bp.io.pred_taken_0, false.B, io.Inst_In_B)
   val PCA = PC

@@ -33,7 +33,7 @@ class InstCtrlBlock extends Bundle{
   val store = new StoreIssue
   //csrrw
   val csr_addr :UInt= UInt(12.W)  // CSR地址
-  val csr_wdata :UInt= UInt(32.W) // 要写入CSR的数据
+  val csr_wdata :UInt= UInt(32.W) // 要读CSR的数据
 
   //BP
   val bpPredTaken = Bool()//0为不跳
@@ -62,7 +62,7 @@ class StoreIssue extends Bundle{
   val Valid: Bool = Bool()
   val addr :UInt= UInt(64.W)
   val mask :UInt= UInt(3.W)
-  val data :UInt= UInt(32.W)
+  val data :UInt= UInt(64.W)
   val Ready :Bool= Bool()
 }
 
@@ -124,6 +124,9 @@ class ISA extends Bundle{
   val LW : Bool= Bool()
   // csrrw
   val CSRRW : Bool= Bool()
+  val NOP : Bool = Bool() // NOP指令
+ // val RETIME : Bool = Bool() // RETIME指令
+  //val RECYCLE : Bool = Bool() // RECYCLE指令
 
   def Aclass(): Bool = {
     val Arithmetic = ADD || ADDI || SUB || LUI || AUIPC

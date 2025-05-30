@@ -18,7 +18,7 @@ class Commit extends Module {
 
     val ReOrderNumA = Output(UInt(6.W))
     val ReOrderNumB = Output(UInt(6.W))
-//    val Bank = Output(Vec(64, new InstCtrlBlock()))
+   // val Bank = Output(Vec(64, new InstCtrlBlock()))
 
     val ForwardLoad = Input(new LoadIssue)
     val ForwardStore = Output(new StoreIssue)
@@ -54,7 +54,7 @@ class Commit extends Module {
   val CmtBisHalt = (CmtB.inst(6, 0) === "h6b".U(7.W)).asBool
   val CmtBisStore = CmtB.isa.Sclass.asBool
 
-  val Bready = (Aready && CmtB.Valid && CmtB.finish && !CmtBranchJump && !io.Rollback && !CmtBisPrint && !CmtBisHalt && !CmtBisStore).asBool
+  val Bready = (Aready && CmtB.Valid && CmtB.finish && !CmtBranchJump && !io.Rollback && !CmtBisPrint && !CmtBisHalt && !CmtBisStore ).asBool
   io.CmtA := Mux(Aready, CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
   io.CmtB := Mux(Bready, CmtB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
 
@@ -82,14 +82,14 @@ class Commit extends Module {
   }
 
   //load forward
-  val HitVector = GenHitVec()
-  val HIT = (HitVector =/= 0.U).asBool
+  val HitVector = GenHitVec() //生成一个 命中向量（HitVector）,标记所有与当前 load 地址匹配的未提交 store 条目。
+  val HIT = (HitVector =/= 0.U).asBool //判断是否存在至少一个命中的 store
 
-  val distance = 64.U - EnQueuePointer
+  val distance = 64.U - EnQueuePointer //计算移位距离，保证 HitVector 在 Bank 中正确对齐。
   val LeftHitV = CyclicShiftLeft(HitVector, distance)
-  val UniqueHitV = PriorityEncoderOH(LeftHitV)
+  val UniqueHitV = highbit(LeftHitV) //从移位后的 LeftHitV 中提取 优先级最高的命中条目即程序顺序上最近的 store）
   val RightHitV = CyclicShiftRight(UniqueHitV, distance)
-  val HitIndex = PriorityEncoder(RightHitV)
+  val HitIndex = Log2(RightHitV)
 
   io.ForwardStore := Mux(HIT, Bank(HitIndex).store, WireInit(0.U.asTypeOf(new StoreIssue())))
 
@@ -102,16 +102,9 @@ class Commit extends Module {
   }
 
   // 传递CSR写数据
-  when(io.CmtA.isa.CSRRW) {
-    io.CmtA.csr_wdata := io.CmtA.src1
-  }
-  when(io.CmtB.isa.CSRRW) {
-    io.CmtB.csr_wdata := io.CmtB.src1
-  }
- // io.Bank := Bank
   io.EnQueuePointer := EnQueuePointer
   io.DeQueuePointer := DeQueuePointer
-//  io.Bank := Bank
+ // io.Bank := Bank
 }
 
 object CyclicShiftLeft {

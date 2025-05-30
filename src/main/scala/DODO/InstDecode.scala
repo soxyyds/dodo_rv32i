@@ -150,6 +150,10 @@ class Decoder extends Module {
   io.isa.LUI   := (io.inst === BitPat("b?????????????????????_?????_0110111"))  // 加载高位立即数
   io.isa.AUIPC := (io.inst === BitPat("b?????????????????????_?????_0010111"))  // PC加立即数
 
+  io.isa.NOP := false.asBool//系统级的都是通过fun3来区分的
+ // io.isa.RETIME := (io.inst === BitPat("b110000000001_?????_010_?????_1110011")) // RETIME指令
+  // io.isa.RECYCLE := (io.inst === BitPat("b110000000000_?????_010_?????_1110011")) // RECYCLE指令
+
   // 立即数提取
   val I = io.inst(31, 20)
   val B = Cat(io.inst(31), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W))
@@ -197,14 +201,3 @@ object ZeroExt {
   }
 }
 
-// 添加Verilog生成对象
-object IDVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new InstDecode(),
-    args = Array(
-      "-o", "InstDecode.v",
-      "--target-dir", "generated/InstDecode",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}

@@ -11,6 +11,7 @@ class Top extends Module{
     val Inst_A = Input(UInt(32.W))
     val Inst_B = Input(UInt(32.W))
     val DataRam = new RAMHelperIO_2
+    val d_data = Output(UInt(64.W)) // 数据总线输出
     val mem_inst = Output(new InstCtrlBlock) // 内存指令提交
     val mem_Valid = Output(Bool()) // 内存指令的有效性
     //test
@@ -30,11 +31,13 @@ class Top extends Module{
  //   val exe_inst_B = Output(new InstCtrlBlock)
  //   val memory_inst_A = Output(new InstCtrlBlock)
  //   val memory_inst_B = Output(new InstCtrlBlock)
+    val forwardStore = Output(new StoreIssue) // Store Forwarding 输入
+    val read_func3 = Output(UInt(3.W)) // 读取功能码
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
     val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
-  //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
+ //   val com_bank = Output(Vec(64, new InstCtrlBlock()))
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
     val fin_C = Output(new InstCtrlBlock)
@@ -83,7 +86,8 @@ class Top extends Module{
 //  io.com_bank := Commit.io.Bank
   io.mem_inst := Memory.io.mem_inst
   io.mem_Valid := Memory.io.mem_Valid
-
+  io.forwardStore := Commit.io.ForwardStore // Store Forwarding 输出
+  io.read_func3 := Memory.io.read_func3// 读取功能码
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
   InstFetch.io.Inst_In_B := io.Inst_B
@@ -157,6 +161,7 @@ class Top extends Module{
 
   // IO
   io.DataRam <> Memory.io.DataRam
+  io.d_data := Memory.io.d_data // 数据总线输出
 
   // CSR寄存器定义
   val mcycle = RegInit(0.U(64.W))
@@ -195,6 +200,8 @@ class TopWithMemory extends Module {
     val dis_instB = Output(UInt(32.W))
     val dis_instC = Output(UInt(32.W))
     val fetchblock = Output(Bool())
+    val com_jumptakenA = Output(Bool())
+    val com_jumptakenB = Output(Bool())
     val com_jumppcA = Output(UInt(64.W))
     val com_jumppcB = Output(UInt(64.W))
     val com_branchtargetA = Output(UInt(64.W))
@@ -283,7 +290,9 @@ class TopWithMemory extends Module {
     val mem_rdata = Output(UInt(32.W)) // 暴露内存读数据
     val mem_inst = Output(UInt(32.W)) // 暴露内存指令提交
     val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
-//    val com_bank = Output(Vec(64, new InstCtrlBlock()))
+    val mem_fwdata = Output(UInt(64.W)) // 暴露内存转发数据
+  //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
+    val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
   })
 
   val cpu = Module(new Top)
@@ -355,6 +364,7 @@ class TopWithMemory extends Module {
   io.com_instA := cpu.io.com_inst_A.inst
   io.com_instB := cpu.io.com_inst_B.inst
 
+
   io.com_dataA :=cpu.io.com_inst_A.wbdata
   io.com_dataB :=cpu.io.com_inst_B.wbdata
   io.com_reorderNumA := cpu.io.com_inst_A.reOrderNum
@@ -388,20 +398,25 @@ class TopWithMemory extends Module {
 
   io.fin_C_finish := cpu.io.fin_C.finish
   io.fetchblock := cpu.io.fetchBlock
-  io.com_jumppcA := cpu.io.com_inst_A.jump.actTarget
-  io.com_jumppcB := cpu.io.com_inst_B.jump.actTarget
+
   io.com_bpPredTargetA := cpu.io.com_inst_A.bpPredTarget
   io.com_bpPredTargetB := cpu.io.com_inst_B.bpPredTarget
   io.com_rollback := cpu.io.rollback
+
+  io.com_jumptakenA := cpu.io.com_inst_A.jump.Valid
+  io.com_jumptakenB := cpu.io.com_inst_B.jump.Valid
+  io.com_jumppcA := cpu.io.com_inst_A.jump.actTarget
+  io.com_jumppcB := cpu.io.com_inst_B.jump.actTarget
   io.com_branchtargetA := cpu.io.com_inst_A.branch.target
   io.com_branchtargetB := cpu.io.com_inst_B.branch.target
   io.com_bpPredTakenA := cpu.io.com_inst_A.bpPredTaken
   io.com_bpPredTakenB := cpu.io.com_inst_B.bpPredTaken
   io.com_branchtakenA := cpu.io.com_inst_A.branch.Valid
   io.com_branchtakenB := cpu.io.com_inst_B.branch.Valid
+
   io.com_EnQueuePointer := cpu.io.com_EnQueuePointer // 提交阶段的队列指针
   io.com_DeQueuePointer := cpu.io.com_DeQueuePointer // 提交阶段的寄存器指针
- // io.com_bank := cpu.io.com_bank // 暴露
+//  io.com_bank := cpu.io.com_bank // 暴露
   io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
   io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
   io.mem_readAddr := cpu.io.DataRam.read_address // 暴露内存读地址
@@ -411,6 +426,8 @@ class TopWithMemory extends Module {
   io.mem_func3_read := data_memory.io.ex_mem.func3_read // 暴露内存读功能码
   io.mem_Valid := cpu.io.mem_Valid // 暴露内存指令的有效性
   io.mem_inst := cpu.io.mem_inst.inst // 暴露内存指令提交
+  io.mem_fwdata := cpu.io.d_data
+  io.read_func3 := cpu.io.read_func3 // 暴露读取功能码
 }
 
 object ExVerilog extends App {

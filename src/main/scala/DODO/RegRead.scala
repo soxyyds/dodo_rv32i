@@ -36,7 +36,8 @@ class RegRead extends Module{
   val INSTC = RegNext(io.DPRRC)
 
   val PhyRegFile = new AbstractRegBank(128,32)
-
+  val cycle = RegInit(0.U(32.W))
+  cycle := cycle + 1.U // 每个时钟周期让 cycle 自增 1
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -73,6 +74,8 @@ class RegRead extends Module{
   val InstBisHalt = INSTB.inst(6,0) === "h6b".U(7.W)
   val InstAisPrint = INSTA.inst(6,0) === "h7b".U(7.W)
   val InstBisPrint = INSTB.inst(6,0) === "h7b".U(7.W)
+  val csrA = INSTA.inst(6,0) === "b1110011".U(7.W)
+  val csrB = INSTB.inst(6,0) === "b1110011".U(7.W)
   //如果是halt/print指令或分支跳转指令，则在本阶段指令完成，那么commit模块随后会发射指令
   val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass || InstAisHalt || InstAisPrint
   val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass || InstBisHalt || InstBisPrint
@@ -95,15 +98,22 @@ class RegRead extends Module{
     io.RREXB := GenICB(src3, src4, INSTB)
     io.RREXC := GenICB(src5, src6, INSTC)
     //判断两条指令是否为分支跳转类指令，将指令信息赋值给FinA/B
-    io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
-    io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
+ //   io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
+ //   io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
     // csr_addr的传递在上述RREX的赋值中已经包含
-    io.RREXA.csr_wdata := src1
-    io.RREXB.csr_wdata := src3
+    when(!csrA){
+      io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
+    }.otherwise{
+      io.FinA := GenCSR(csrA,cycle, INSTA)
+//      PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
+    }
+    when(!csrB){
+      io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
+    }.otherwise{
+      io.FinB := GenCSR(csrB,cycle, INSTB)
+ //     PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
+    }
   }
-
-
-
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
     ICB.Valid := DPRR.Valid
@@ -129,6 +139,36 @@ class RegRead extends Module{
     ICB.store := DPRR.store
     ICB.csr_addr := DPRR.csr_addr
     ICB.csr_wdata := src1
+    ICB.bpPredTaken := DPRR.bpPredTaken
+    ICB.bpPredTarget := DPRR.bpPredTarget
+    ICB.bppredIndex := DPRR.bppredIndex
+    ICB    //返回值，将生成的指令信息返回给调用者
+  }
+  def GenCSR(finish: Bool, csr_data: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
+    val ICB = Wire(new InstCtrlBlock)
+    ICB.Valid := DPRR.Valid
+    ICB.inst := DPRR.inst
+    ICB.pc := DPRR.pc
+    ICB.isa := DPRR.isa
+    ICB.finish := finish
+    ICB.reOrderNum := DPRR.reOrderNum
+    ICB.regdes := DPRR.regdes
+    ICB.regsrc1 := DPRR.regsrc1
+    ICB.regsrc2 := DPRR.regsrc2
+    ICB.pregsrc1 := DPRR.pregsrc1
+    ICB.pregsrc2 := DPRR.pregsrc2
+    ICB.pregdes := DPRR.pregdes
+    ICB.cmtdes := DPRR.cmtdes
+    ICB.src1 := DPRR.src1
+    ICB.src2 := DPRR.src2
+    ICB.imm := DPRR.imm
+    ICB.wbdata := csr_data
+    ICB.jump := DPRR.jump
+    ICB.branch := DPRR.branch
+    ICB.load := DPRR.load
+    ICB.store := DPRR.store
+    ICB.csr_addr := DPRR.csr_addr
+    ICB.csr_wdata := csr_data
     ICB.bpPredTaken := DPRR.bpPredTaken
     ICB.bpPredTarget := DPRR.bpPredTarget
     ICB.bppredIndex := DPRR.bppredIndex
