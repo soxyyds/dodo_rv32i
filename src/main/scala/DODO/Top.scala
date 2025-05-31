@@ -11,10 +11,8 @@ class Top extends Module{
     val Inst_A = Input(UInt(32.W))
     val Inst_B = Input(UInt(32.W))
     val DataRam = new RAMHelperIO_2
-    val d_data = Output(UInt(64.W)) // 数据总线输出
     val mem_inst = Output(new InstCtrlBlock) // 内存指令提交
     val mem_Valid = Output(Bool()) // 内存指令的有效性
-    //test
     val fetch_inst_A = Output(new InstCtrlBlock)
     val fetch_inst_B = Output(new InstCtrlBlock)
     val map_inst_A = Output(new InstCtrlBlock)
@@ -27,12 +25,8 @@ class Top extends Module{
     val decode_inst_B = Output(new InstCtrlBlock)
     val read_inst_A = Output(new InstCtrlBlock)
     val read_inst_B = Output(new InstCtrlBlock)
- //   val exe_inst_A = Output(new InstCtrlBlock)
- //   val exe_inst_B = Output(new InstCtrlBlock)
- //   val memory_inst_A = Output(new InstCtrlBlock)
- //   val memory_inst_B = Output(new InstCtrlBlock)
     val forwardStore = Output(new StoreIssue) // Store Forwarding 输入
-    val read_func3 = Output(UInt(3.W)) // 读取功能码
+
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
@@ -45,11 +39,9 @@ class Top extends Module{
     val fin_E = Output(new InstCtrlBlock)
 
     val rollback = Output(Bool())
- //   val read_inst_A = Output(new InstCtrlBlock)
-  //  val read_inst_B = Output(new InstCtrlBlock)
+
   })
 
-  // Module
   val InstFetch   = Module(new InstFetch)
   val InstDecode  = Module(new InstDecode)
   val RegMap      = Module(new RegMap)
@@ -77,17 +69,17 @@ class Top extends Module{
   io.read_inst_B := RegRead.io.RREXB
   io.fin_A := RegRead.io.FinA
   io.fin_B := RegRead.io.FinB
- // io.exe_inst_A := Execute.io.EXMEM.inst
+
   io.fin_C := Execute.io.FinC
   io.fin_D := Execute.io.FinD
   io.fin_E := Memory.io.FinE
   io.com_DeQueuePointer := Commit.io.DeQueuePointer // 提交阶段的寄存器指针
   io.com_EnQueuePointer := Commit.io.EnQueuePointer // 提交阶段的队列指针
-//  io.com_bank := Commit.io.Bank
+
   io.mem_inst := Memory.io.mem_inst
   io.mem_Valid := Memory.io.mem_Valid
   io.forwardStore := Commit.io.ForwardStore // Store Forwarding 输出
-  io.read_func3 := Memory.io.read_func3// 读取功能码
+  //io.read_func3 := Memory.io.read_func3// 读取功能码
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
   InstFetch.io.Inst_In_B := io.Inst_B
@@ -124,7 +116,8 @@ class Top extends Module{
   Commit.io.CmtA <> RegMap.io.CmtA//CmtA改成了cmt_A
   Commit.io.CmtB <> RegMap.io.CmtB
   Commit.io.CmtA <> Memory.io.CmtA
-
+  Commit.io.CmtB <> RegRead.io.CmtB //CmtB改成了cmt_B
+  Commit.io.CmtA <> RegRead.io.CmtA
   // dispatch
   Dispatch.io.regstate <> RegMap.io.PhyRegStates //PhyRegStates改成了regstate
 
@@ -140,11 +133,11 @@ class Top extends Module{
 
   // block
   val FetchBlock = (Dispatch.io.fetchblock) || Commit.io.FetchBlock
-  val enable = !FetchBlock
+ // val enable = !FetchBlock
   io.fetchBlock := FetchBlock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
-  Dispatch.io.fetchblock <> RegMap.io.FetchBlock//RegMap和Dispatch的FetchBlock改成了enable
+  FetchBlock <> RegMap.io.FetchBlock//RegMap和Dispatch的FetchBlock改成了enable
 
   // rollback
   Commit.io.Rollback <> InstFetch.io.Rollback
@@ -161,7 +154,7 @@ class Top extends Module{
 
   // IO
   io.DataRam <> Memory.io.DataRam
-  io.d_data := Memory.io.d_data // 数据总线输出
+//  io.d_data := Memory.io.d_data // 数据总线输出
 
   // CSR寄存器定义
   val mcycle = RegInit(0.U(64.W))
@@ -290,9 +283,9 @@ class TopWithMemory extends Module {
     val mem_rdata = Output(UInt(32.W)) // 暴露内存读数据
     val mem_inst = Output(UInt(32.W)) // 暴露内存指令提交
     val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
-    val mem_fwdata = Output(UInt(64.W)) // 暴露内存转发数据
+ //   val mem_fwdata = Output(UInt(64.W)) // 暴露内存转发数据
   //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
-    val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
+  //w  val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
   })
 
   val cpu = Module(new Top)
@@ -426,8 +419,8 @@ class TopWithMemory extends Module {
   io.mem_func3_read := data_memory.io.ex_mem.func3_read // 暴露内存读功能码
   io.mem_Valid := cpu.io.mem_Valid // 暴露内存指令的有效性
   io.mem_inst := cpu.io.mem_inst.inst // 暴露内存指令提交
-  io.mem_fwdata := cpu.io.d_data
-  io.read_func3 := cpu.io.read_func3 // 暴露读取功能码
+ // io.mem_fwdata := cpu.io.d_data
+  //io.read_func3 := cpu.io.read_func3 // 暴露读取功能码
 }
 
 object ExVerilog extends App {

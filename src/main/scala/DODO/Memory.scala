@@ -35,7 +35,7 @@ class Memory extends Module {
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
  // val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
   val d_data = Wire(UInt(64.W)) // 读取的内存数据
-  d_data := Mux(io.DataRam.data_wen, 0.U(64.W), io.DataRam.data_rdata) // 从RAM读取数据，如果没有数据则为0
+  d_data := io.DataRam.data_rdata // 从RAM读取数据，如果没有数据则为0
 
 
   // === 4. 加载类型拼接处理 ===

@@ -151,8 +151,8 @@ class Decoder extends Module {
   io.isa.AUIPC := (io.inst === BitPat("b?????????????????????_?????_0010111"))  // PC加立即数
 
   io.isa.NOP := false.asBool//系统级的都是通过fun3来区分的
- // io.isa.RETIME := (io.inst === BitPat("b110000000001_?????_010_?????_1110011")) // RETIME指令
-  // io.isa.RECYCLE := (io.inst === BitPat("b110000000000_?????_010_?????_1110011")) // RECYCLE指令
+  io.isa.RDTIME := (io.inst === BitPat("b110000000001_?????_010_?????_1110011")) // RETIME指令
+  io.isa.RDCYCLE := (io.inst === BitPat("b110000000000_?????_010_?????_1110011")) // RECYCLE指令
 
   // 立即数提取
   val I = io.inst(31, 20)
@@ -170,15 +170,14 @@ class Decoder extends Module {
   io.imm.J := SignExt(J, 32)
   io.imm.Z := Z
 
-  // 识别CSRRW指令 (opcode=SYSTEM, func3=001)
-  private val csrrwPattern = BitPat("b????????????_?????_001_?????_1110011")
-  io.isa.CSRRW := (io.inst === csrrwPattern)
+
+  io.isa.CSRRW := io.isa.RDCYCLE || io.isa.RDTIME // 通过RECYCLE和RETIME指令来识别CSR读写
   // CSR地址
   io.csr_addr := io.inst(31,20)
 
   // 寄存器操作数识别
   val wen = io.isa.Aclass || io.isa.Jclass || io.isa.Lclass || io.isa.CSRRW
-  val src1 =  (io.isa.Aclass() && !(io.isa.LUI || io.isa.AUIPC)) || io.isa.Bclass() || io.isa.Sclass() || io.isa.Lclass() || io.isa.JALR|| io.isa.CSRRW
+  val src1 =  (io.isa.Aclass() && !(io.isa.LUI || io.isa.AUIPC)) || io.isa.Bclass() || io.isa.Sclass() || io.isa.Lclass() || io.isa.JALR
   val src2 =(io.isa.Aclass() && ( io.isa.ADD || io.isa.SUB || io.isa.SLL || io.isa.SRL || io.isa.AND || io.isa.OR || io.isa.SLT || io.isa.SLTU)) || io.isa.Bclass() || io.isa.Sclass() /* 识别需要rs2的指令 *///src2和src1并不都是存在的，因此我们需要使能信号来决定src是否有必要存在
   io.regdes := Mux(wen, io.inst(11,7), 0.U)
   io.regsrc1 := Mux(src1, io.inst(19,15), 0.U)

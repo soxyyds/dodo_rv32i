@@ -125,8 +125,8 @@ class ISA extends Bundle{
   // csrrw
   val CSRRW : Bool= Bool()
   val NOP : Bool = Bool() // NOP指令
- // val RETIME : Bool = Bool() // RETIME指令
-  //val RECYCLE : Bool = Bool() // RECYCLE指令
+  val RDTIME : Bool = Bool() // RETIME指令
+  val RDCYCLE : Bool = Bool() // RECYCLE指令
 
   def Aclass(): Bool = {
     val Arithmetic = ADD || ADDI || SUB || LUI || AUIPC

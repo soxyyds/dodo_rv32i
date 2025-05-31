@@ -26,6 +26,9 @@ class RegRead extends Module{
     val FinD = Input(new InstCtrlBlock)
     val FinE = Input(new InstCtrlBlock)
 
+    val CmtA = Input(new InstCtrlBlock) // 来自 Commit 阶段的指令控制块
+    val CmtB = Input(new InstCtrlBlock) // 来自 Commit 阶段的指令控制块
+
     val Rollback = Input(Bool())
 
   })
@@ -37,7 +40,12 @@ class RegRead extends Module{
 
   val PhyRegFile = new AbstractRegBank(128,32)
   val cycle = RegInit(0.U(32.W))
-  cycle := cycle + 1.U // 每个时钟周期让 cycle 自增 1
+  when(io.CmtA.Valid&&io.CmtA.finish || io.CmtB.Valid&&io.CmtB.finish){
+    cycle := cycle + (io.CmtA.Valid && io.CmtA.finish) + (io.CmtB.Valid&&io.CmtB.finish) //每次Commit阶段完成时，周期加1
+  }
+  val time = RegInit(0.U(32.W))
+  time := time + 1.U //每个周期加1
+
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -104,22 +112,28 @@ class RegRead extends Module{
     when(!csrA){
       io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
     }.otherwise{
-      io.FinA := GenCSR(csrA,cycle, INSTA)
-//      PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
+      when(INSTA.isa.RDTIME){
+        io.FinA := GenCSR(INSTA.isa.RDTIME, time, INSTA) // RDTIME指令，返回当前周期数
+      }.otherwise{
+        io.FinA := GenCSR(INSTA.isa.RDCYCLE, cycle, INSTA) // 其他CSR指令
+      }
     }
     when(!csrB){
       io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
     }.otherwise{
-      io.FinB := GenCSR(csrB,cycle, INSTB)
- //     PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
+      when(INSTB.isa.RDCYCLE){
+        io.FinB := GenCSR(INSTB.isa.RDCYCLE, cycle, INSTB) // RDCYCLE指令，返回当前周期数
+      }.otherwise{
+        io.FinB := GenCSR(INSTB.isa.RDTIME, time, INSTB) // 其他CSR指令
+      }
     }
   }
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
+    ICB.isa := DPRR.isa
     ICB.Valid := DPRR.Valid
     ICB.inst := DPRR.inst
     ICB.pc := DPRR.pc
-    ICB.isa := DPRR.isa
     ICB.finish := DPRR.finish
     ICB.reOrderNum := DPRR.reOrderNum
     ICB.regdes := DPRR.regdes
