@@ -28,25 +28,70 @@ class Memory extends Module {
   io.DataRam.data_address := Mux(io.CmtA.store.Valid, io.CmtA.store.addr, 0.U(64.W)) //如果是store指令就用store的地址，
   io.DataRam.data_wdata := io.CmtA.store.data //获取要存入里面的数据
   io.DataRam.func3_write := io.CmtA.store.mask//获取掩码 mask掩码要修改，这个mask是在execute里面生成的
-  io.DataRam.func3_read := INST.store.mask //获取load的掩码
+  io.DataRam.func3_read := 2.U //获取load的掩码
   io.mem_Valid := (io.CmtA.Valid &&(io.CmtA.store.Valid || io.CmtA.load.Valid))
   io.mem_inst := Mux(io.mem_Valid, io.CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock)))
   // === 3. Store Forwarding 拼接逻辑 ===
   val wdata = Mux(io.ForwardStore.Valid, io.ForwardStore.data, 0.U(64.W))
- // val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
-  val d_data = Wire(UInt(64.W)) // 读取的内存数据
-  d_data := io.DataRam.data_rdata // 从RAM读取数据，如果没有数据则为0
+  val processedwdata = WireInit(0.U(64.W)) // Store Forwarding 的数据
+  // Store Forwarding 数据生成逻辑
+  when(io.ForwardStore.Valid) {
+    // 根据不同的加载类型生成对应的数据
+    switch(io.ForwardStore.mask) {
+      is(0.U) { // SB - 字节存储，拼接成64位数据
+        processedwdata := Cat(0.U(32.W), io.ForwardStore.data(7,0),io.ForwardStore.data(7,0),io.ForwardStore.data(7,0),io.ForwardStore.data(7,0))
+      }
+      is(1.U) { // SH - 半字存储，拼接成64位数据
+        processedwdata := Cat(0.U(32.W), io.ForwardStore.data(15, 0), io.ForwardStore.data(15, 0))
+      }
+      is(2.U) { // SW - 字存储，直接使用64位数据
+        processedwdata := Cat(0.U(32.W), io.ForwardStore.data(31, 0)) // LW - 字加载，直接使用32位数据
+      }
+    }
+  }.otherwise {   // 如果没有 Store Forwarding，则使用默认值
+    processedwdata := Cat(0.U(32.W), io.ForwardStore.data(31, 0))
+  }
 
 
+  // val wmask = Mux(io.ForwardStore.Valid, io.ForwardStore.mask, 0.U(64.W))
+
+  val wmask = WireInit(0.U(64.W)) // Store Forwarding 的掩码
+  // Store Forwarding 掩码生成逻辑
+  when(io.ForwardStore.Valid) {
+    // 根据不同的加载类型生成对应的掩码
+    switch(io.ForwardStore.mask) {
+      is(0.U) { // LB - 字节加载，掩码为0x000000FF
+        switch(io.ForwardStore.addr(1,0)) {
+          is(0.U) { wmask := 0x000000FFL.U(64.W) } // 低字节
+          is(1.U) { wmask := 0x0000FF00L.U(64.W) } // 次低字节
+          is(2.U) { wmask := 0x00FF0000L.U(64.W) } // 次高字节
+          is(3.U) { wmask := 0xFF000000L.U(64.W) } // 高字节
+        }
+
+      }
+      is(1.U) { // LH - 半字加载，掩码为0x0000FFFF
+        switch(io.ForwardStore.addr(1,0)) {
+          is(0.U) { wmask := 0x0000FFFFL.U(64.W) } // 低半字
+          is(1.U) { wmask := 0xFFFF0000L.U(64.W) } // 高半字
+        }
+      }
+      is(2.U) { // LW - 字加载，掩码为0xFFFFFFFF
+        wmask := 0xFFFFFFFFL.U(64.W) // 整个字
+      }
+    }
+  }.otherwise {
+    wmask := 0.U(64.W)
+  }
+
+  val d_data = (io.DataRam.data_rdata & (~wmask).asUInt) | (processedwdata & wmask)
   // === 4. 加载类型拼接处理 ===
   // 从64位总数据中逐级选择目标字节（load类型决定需要哪一段）
   val w_data = d_data(31,0)        // 选择 word（4 字节）
-  val h_data = w_data(15,0)        // 选择 half（2 字节）
-  val b_data = h_data(7,0)          // 选择 byte（1 字节）
+  val h_data = Mux(INST.load.addr(1).asBool, d_data(31,16), d_data(15,0)) // 选择 half-word（2 字节）
+  val b_data = Mux(INST.load.addr(0).asBool, h_data(15,8), h_data(7,0)) // 选择 byte（1 字节）
 
 
-
-//  val LD_data  = Mux(INST.isa.LD, d_data, 0.U)
+  //  val LD_data  = Mux(INST.isa.LD, d_data, 0.U)
   val LW_data  = Mux(INST.isa.LW, SignExt(w_data, 64), 0.U)
   val LH_data  = Mux(INST.isa.LH, SignExt(h_data, 64), 0.U)
   val LB_data  = Mux(INST.isa.LB, SignExt(b_data, 64), 0.U)
