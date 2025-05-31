@@ -169,12 +169,7 @@ class memquene extends Module{
   }
   //这里out_point指针指向的是要出站的指令位置，但是要出去必须就绪才可以出去，于是要看它的物理寄存器是否就绪
 }
-object lowbit {
-  def apply(data: UInt): UInt = {
-    val result = data & (-data).asTypeOf(UInt(data.getWidth.W))
-    result(data.getWidth-1, 0)
-  }
-}
+
 
 
 

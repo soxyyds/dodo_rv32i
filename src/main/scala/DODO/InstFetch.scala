@@ -73,7 +73,7 @@ class InstFetch extends Module {
 
   // ------------------ 指令拆分与输出逻辑（保持不变） ------------------
   val ValidA = ENABLE && (io.Inst_In_A =/= BitPat("b0000000_00000_00000_000_00000_1110011")) // NOP指令
-  val ValidB = Mux(Bp.io.pred_taken_0, false.B, ENABLE) && (io.Inst_In_B =/= BitPat("b0000000_00000_00000_000_00000_1110011"))
+  val ValidB = Mux(Bp.io.pred_taken_0, false.B, ENABLE) && (io.Inst_In_A =/= BitPat("b0000000_00000_00000_000_00000_1110011"))
   val InstA = io.Inst_In_A
   val InstB = Mux(Bp.io.pred_taken_0, false.B, io.Inst_In_B)
   val PCA = PC

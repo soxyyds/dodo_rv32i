@@ -26,8 +26,7 @@ class RegMap extends Module{
     val ReOrderNumA = Input(UInt(6.W))
     val ReOrderNumB = Input(UInt(6.W))
     val PhyRegStates = Output(UInt(128.W))
-    val ArchRegValues = Output(Vec(32, UInt(64.W)))
-
+    val ArchRegValues = Output(Vec(32, UInt(32.W)))
   })
 
   val RegA = RegEnable(io.IDRMA, !io.FetchBlock)
@@ -223,7 +222,11 @@ class PhyRegStatesTable {
 
 //input : 00101010110
 //output: 00000000010
-
+object lowbit {
+  def apply(data: UInt): UInt = {
+    data & data.zext().asUInt  // 通过符号扩展实现补码取负
+  }
+}
 //input : 00101010110
 //output: 00100000000
 object highbit {
