@@ -142,14 +142,3 @@ class RAMHelperIO_2 extends Bundle {
   // 原子操作标志
 }
 
-// 添加Verilog生成对象
-object IFVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new InstFetch(),
-    args = Array(
-      "-o", "InstFetch.v",
-      "--target-dir", "generated/InstFetch",
-      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-    )
-  )
-}

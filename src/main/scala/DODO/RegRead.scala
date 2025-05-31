@@ -25,7 +25,8 @@ class RegRead extends Module{
     val FinC = Input(new InstCtrlBlock)
     val FinD = Input(new InstCtrlBlock)
     val FinE = Input(new InstCtrlBlock)
-
+    val CmtA = Input(new InstCtrlBlock) //来自Commit阶段的指令信息
+    val CmtB = Input(new InstCtrlBlock) //来自Commit阶段的指令信息
     val Rollback = Input(Bool())
 
   })
@@ -38,6 +39,9 @@ class RegRead extends Module{
   val PhyRegFile = new AbstractRegBank(128,32)
   val cycle = RegInit(0.U(32.W))
   cycle := cycle + 1.U // 每个时钟周期让 cycle 自增 1
+  val time = RegInit(0.U(32.W)) // 用于记录指令的时间戳
+  time := time + (io.CmtA.Valid && io.CmtA.finish).asUInt + (io.CmtB.Valid && io.CmtB.finish).asUInt
+
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
   val src3 = PhyRegFile.read(INSTB.pregsrc1)
@@ -72,13 +76,13 @@ class RegRead extends Module{
   //为了便于调试，添加特殊指令halt和print，在这里进行判断
   val InstAisHalt = INSTA.inst(6,0) === "h6b".U(7.W)
   val InstBisHalt = INSTB.inst(6,0) === "h6b".U(7.W)
-  val InstAisPrint = INSTA.inst(6,0) === "h7b".U(7.W)
-  val InstBisPrint = INSTB.inst(6,0) === "h7b".U(7.W)
-  val csrA = INSTA.inst(6,0) === "b1110011".U(7.W)
+  //val InstAisPrint = INSTA.inst(6,0) === "h7b".U(7.W)
+ // val InstBisPrint = INSTB.inst(6,0) === "h7b".U(7.W)
+  val csrA = INSTA.inst(6,0) === "b1110011".U(7.W) 
   val csrB = INSTB.inst(6,0) === "b1110011".U(7.W)
   //如果是halt/print指令或分支跳转指令，则在本阶段指令完成，那么commit模块随后会发射指令
-  val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass || InstAisHalt || InstAisPrint
-  val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass || InstBisHalt || InstBisPrint
+  val Afinish = INSTA.isa.Bclass || INSTA.isa.Jclass || InstAisHalt
+  val Bfinish = INSTB.isa.Bclass || INSTB.isa.Jclass || InstBisHalt
 
   io.RREXA.csr_wdata := 0.U
   io.RREXB.csr_wdata := 0.U
@@ -104,14 +108,20 @@ class RegRead extends Module{
     when(!csrA){
       io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
     }.otherwise{
-      io.FinA := GenCSR(csrA,cycle, INSTA)
-//      PhyRegFile.write(io.FinA.Valid && io.FinA.finish, io.FinA.pregdes, io.FinA.wbdata)
+      when(INSTA.isa.RDCYCLE){
+        io.FinA := GenCSR(INSTA.isa.RDCYCLE, cycle, INSTA)
+      }.otherwise{
+        io.FinA := GenCSR(INSTA.isa.RDTIME, time, INSTA)
+      }
     }
     when(!csrB){
       io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
     }.otherwise{
-      io.FinB := GenCSR(csrB,cycle, INSTB)
- //     PhyRegFile.write(io.FinB.Valid && io.FinB.finish, io.FinB.pregdes, io.FinB.wbdata)
+      when(INSTB.isa.RDCYCLE){
+        io.FinB := GenCSR(INSTB.isa.RDCYCLE, cycle, INSTB)
+      }.otherwise{
+        io.FinB := GenCSR(INSTB.isa.RDTIME, time, INSTB)
+      }
     }
   }
   def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {

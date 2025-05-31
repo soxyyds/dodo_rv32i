@@ -96,7 +96,7 @@ class Commit extends Module {
   def GenHitVec(): UInt = {
     val HitVec = Wire(Vec(64, UInt(1.W)))
     for (i <- 0 to 63) {
-      HitVec(i) := (io.ForwardLoad.Valid && Bank(i).Valid && Bank(i).store.Valid && (io.ForwardLoad.addr(63, 3) === Bank(i).store.addr(63, 3))).asUInt
+      HitVec(i) := (io.ForwardLoad.Valid && Bank(i).Valid && Bank(i).store.Valid && (io.ForwardLoad.addr(63,2) === Bank(i).store.addr(63,2))).asUInt
     }
     HitVec.asUInt
   }

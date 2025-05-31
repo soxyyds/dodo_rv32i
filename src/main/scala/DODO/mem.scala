@@ -78,13 +78,14 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
   val rawData = memInside(readAddr).reduce((acc, elem) => Cat(elem, acc))
 
   // 根据地址低2位选择对应字节位置（修正后）
-  val alignedWord = MuxLookup(io.ex_mem.dataAddr_read(1, 0), rawData, Seq(
+  val alignedWord = rawData
+    /*MuxLookup(io.ex_mem.dataAddr_read(1, 0), rawData, Seq(
     0.U -> rawData,
     1.U -> Cat(rawData(7, 0), rawData(31, 8)),   // 正确取出15:8位到低8位
     2.U -> Cat(rawData(15, 0), rawData(31, 16)), // 保持不变
     3.U -> Cat(rawData(23, 0), rawData(31, 24))  // 保持不变
-  ))
-
+    ))
+      */
   // 根据func3进行数据宽度处理和符号扩展
   val processedData = Wire(UInt(32.W))
   // 首先提供默认值

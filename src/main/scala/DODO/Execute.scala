@@ -1,9 +1,7 @@
 package DODO
 import chisel3._
 import chisel3.util._
-
-
-//ljlsyfdygv
+//
 class Execute extends Module{
   val io = IO(new Bundle{
     val RREXA = Input(new InstCtrlBlock)
@@ -145,10 +143,10 @@ class ArithmeticLogicalUnit extends Module {
   val Logical = andi | and | ori | or | xori | xor
 
   //Compare
-  val slt   = SignExt(io.isa.SLT.asUInt, 32)   & Mux(io.src1.asSInt < io.src2.asSInt, 1.U, 0.U)
-  val slti  = SignExt(io.isa.SLTI.asUInt, 32)  & Mux(io.src1.asSInt < io.imm.I.asSInt, 1.U, 0.U)
-  val sltu  = SignExt(io.isa.SLTU.asUInt, 32)  & Mux(io.src1 < io.src2, 1.U, 0.U)
-  val sltiu = SignExt(io.isa.SLTIU.asUInt, 32) & Mux(io.src1 < io.imm.I, 1.U, 0.U)
+  val slt   = SignExt(io.isa.SLT.asUInt, 32)   & Mux(io.src1.asSInt < io.src2.asSInt, 1.U(32.W), 0.U(32.W))
+  val slti  = SignExt(io.isa.SLTI.asUInt, 32)  & Mux(io.src1.asSInt < io.imm.I.asSInt, 1.U(32.W), 0.U(32.W))
+  val sltu  = SignExt(io.isa.SLTU.asUInt, 32)  & Mux(io.src1 < io.src2, 1.U(32.W), 0.U(32.W))
+  val sltiu = SignExt(io.isa.SLTIU.asUInt, 32) & Mux(io.src1 < io.imm.I, 1.U(32.W), 0.U(32.W))
   val Compare = slt | slti | sltu | sltiu
   //Shifts
   private def getShiftAmount(useImm: Bool) =
@@ -166,10 +164,10 @@ class ArithmeticLogicalUnit extends Module {
   val Shifts = sll | srl | sra | slli | srli | srai
 
   val link = SignExt((io.isa.JAL | io.isa.JALR).asUInt, 32) & (io.pc + 4.U)
-  val auipc = SignExt(io.isa.AUIPC.asUInt, 32) & (io.pc + io.imm.U)
+  val auipc = SignExt(io.isa.AUIPC.asUInt, 32) & (io.pc(31,0) + io.imm.U)//这里可能有问题？
 
-  val csr_result = Mux(io.isa.CSRRW, io.csr_rdata, 0.U) //csr
-  io.result := Arithmetic | Logical | Compare | Shifts | link | auipc | csr_result
+ // val csr_result = Mux(io.isa.CSRRW, io.csr_rdata, 0.U) //csr
+  io.result := Arithmetic | Logical | Compare | Shifts | link | auipc
 }
 
 class AddressGenerationUnit extends Module{

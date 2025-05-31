@@ -17,32 +17,32 @@ class Top extends Module{
     //test
     val fetch_inst_A = Output(new InstCtrlBlock)
     val fetch_inst_B = Output(new InstCtrlBlock)
-    val map_inst_A = Output(new InstCtrlBlock)
-    val map_inst_B = Output(new InstCtrlBlock)
-    val dispatch_inst_A = Output(new InstCtrlBlock)
-    val dispatch_inst_B = Output(new InstCtrlBlock)
-    val dispatch_inst_C = Output(new InstCtrlBlock)
+//    val map_inst_A = Output(new InstCtrlBlock)
+//    val map_inst_B = Output(new InstCtrlBlock)
+//    val dispatch_inst_A = Output(new InstCtrlBlock)
+//    val dispatch_inst_B = Output(new InstCtrlBlock)
+//    val dispatch_inst_C = Output(new InstCtrlBlock)
     val fetchBlock = Output (Bool())
-    val decode_inst_A = Output(new InstCtrlBlock)
-    val decode_inst_B = Output(new InstCtrlBlock)
-    val read_inst_A = Output(new InstCtrlBlock)
-    val read_inst_B = Output(new InstCtrlBlock)
+//    val decode_inst_A = Output(new InstCtrlBlock)
+//    val decode_inst_B = Output(new InstCtrlBlock)
+//    val read_inst_A = Output(new InstCtrlBlock)
+//    val read_inst_B = Output(new InstCtrlBlock)
  //   val exe_inst_A = Output(new InstCtrlBlock)
  //   val exe_inst_B = Output(new InstCtrlBlock)
  //   val memory_inst_A = Output(new InstCtrlBlock)
  //   val memory_inst_B = Output(new InstCtrlBlock)
-    val forwardStore = Output(new StoreIssue) // Store Forwarding 输入
-    val read_func3 = Output(UInt(3.W)) // 读取功能码
+ //   val forwardStore = Output(new StoreIssue) // Store Forwarding 输入
+ //   val read_func3 = Output(UInt(3.W)) // 读取功能码
     val com_inst_A = Output(new InstCtrlBlock)
     val com_inst_B = Output(new InstCtrlBlock)
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
     val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
  //   val com_bank = Output(Vec(64, new InstCtrlBlock()))
-    val fin_A = Output(new InstCtrlBlock)
-    val fin_B = Output(new InstCtrlBlock)
-    val fin_C = Output(new InstCtrlBlock)
-    val fin_D = Output(new InstCtrlBlock)
-    val fin_E = Output(new InstCtrlBlock)
+ //   val fin_A = Output(new InstCtrlBlock)
+ //   val fin_B = Output(new InstCtrlBlock)
+ //   val fin_C = Output(new InstCtrlBlock)
+ //   val fin_D = Output(new InstCtrlBlock)
+ //   val fin_E = Output(new InstCtrlBlock)
 
     val rollback = Output(Bool())
  //   val read_inst_A = Output(new InstCtrlBlock)
@@ -61,33 +61,33 @@ class Top extends Module{
 
   io.fetch_inst_A := InstFetch.io.IFIDA
   io.fetch_inst_B := InstFetch.io.IFIDB
-  io.dispatch_inst_A := Dispatch.io.out_A
-  io.dispatch_inst_B := Dispatch.io.out_B
-  io.dispatch_inst_C := Dispatch.io.out_C
-  io.map_inst_A := RegMap.io.RMDPA
-  io.map_inst_B := RegMap.io.RMDPB
+//  io.dispatch_inst_A := Dispatch.io.out_A
+//  io.dispatch_inst_B := Dispatch.io.out_B
+//  io.dispatch_inst_C := Dispatch.io.out_C
+//  io.map_inst_A := RegMap.io.RMDPA
+//  io.map_inst_B := RegMap.io.RMDPB
   io.com_inst_B := Commit.io.CmtB
   io.com_inst_A := Commit.io.CmtA
   io.rollback := Commit.io.Rollback
   io.com_inst_A :=Commit.io.CmtA
   io.com_inst_B :=Commit.io.CmtB
-  io.decode_inst_A :=InstDecode.io.IDRMA
-  io.decode_inst_B :=InstDecode.io.IDRMB
-  io.read_inst_A := RegRead.io.RREXA
-  io.read_inst_B := RegRead.io.RREXB
-  io.fin_A := RegRead.io.FinA
-  io.fin_B := RegRead.io.FinB
+//  io.decode_inst_A :=InstDecode.io.IDRMA
+//  io.decode_inst_B :=InstDecode.io.IDRMB
+//  io.read_inst_A := RegRead.io.RREXA
+//  io.read_inst_B := RegRead.io.RREXB
+ // io.fin_A := RegRead.io.FinA
+ // io.fin_B := RegRead.io.FinB
  // io.exe_inst_A := Execute.io.EXMEM.inst
-  io.fin_C := Execute.io.FinC
-  io.fin_D := Execute.io.FinD
-  io.fin_E := Memory.io.FinE
+ // io.fin_C := Execute.io.FinC
+ // io.fin_D := Execute.io.FinD
+ // io.fin_E := Memory.io.FinE
   io.com_DeQueuePointer := Commit.io.DeQueuePointer // 提交阶段的寄存器指针
   io.com_EnQueuePointer := Commit.io.EnQueuePointer // 提交阶段的队列指针
 //  io.com_bank := Commit.io.Bank
   io.mem_inst := Memory.io.mem_inst
   io.mem_Valid := Memory.io.mem_Valid
-  io.forwardStore := Commit.io.ForwardStore // Store Forwarding 输出
-  io.read_func3 := Memory.io.read_func3// 读取功能码
+ // io.forwardStore := Commit.io.ForwardStore // Store Forwarding 输出
+ // io.read_func3 := Memory.io.read_func3// 读取功能码
   io.pc := InstFetch.io.addressout
   InstFetch.io.Inst_In_A := io.Inst_A
   InstFetch.io.Inst_In_B := io.Inst_B
@@ -124,6 +124,8 @@ class Top extends Module{
   Commit.io.CmtA <> RegMap.io.CmtA//CmtA改成了cmt_A
   Commit.io.CmtB <> RegMap.io.CmtB
   Commit.io.CmtA <> Memory.io.CmtA
+  Commit.io.CmtB <> RegRead.io.CmtB //CmtB改成了cmt_B
+  Commit.io.CmtA <> RegRead.io.CmtA
 
   // dispatch
   Dispatch.io.regstate <> RegMap.io.PhyRegStates //PhyRegStates改成了regstate
@@ -140,7 +142,6 @@ class Top extends Module{
 
   // block
   val FetchBlock = (Dispatch.io.fetchblock) || Commit.io.FetchBlock
-  val enable = !FetchBlock
   io.fetchBlock := FetchBlock//test
   FetchBlock <> InstFetch.io.FetchBlock
   FetchBlock <> InstDecode.io.FetchBlock
@@ -194,11 +195,11 @@ class TopWithMemory extends Module {
 
     val fetch_instA =Output(UInt(32.W))
     val fetch_instB =Output(UInt(32.W))
-    val regMap_instA = Output(UInt(32.W))
-    val regMap_instB = Output(UInt(32.W))
-    val dis_instA = Output(UInt(32.W))
-    val dis_instB = Output(UInt(32.W))
-    val dis_instC = Output(UInt(32.W))
+//    val regMap_instA = Output(UInt(32.W))
+//    val regMap_instB = Output(UInt(32.W))
+  //  val dis_instA = Output(UInt(32.W))
+ //   val dis_instB = Output(UInt(32.W))
+//    val dis_instC = Output(UInt(32.W))
     val fetchblock = Output(Bool())
     val com_jumptakenA = Output(Bool())
     val com_jumptakenB = Output(Bool())
@@ -208,34 +209,34 @@ class TopWithMemory extends Module {
     val com_branchtargetB = Output(UInt(64.W))
     val com_bpPredTargetA = Output(UInt(64.W))
     val com_bpPredTargetB = Output(UInt(64.W))
-    val regMap_reg1 =  Output(UInt(5.W))
-    val regMap_reg2 =  Output(UInt(5.W))
-    val regMap_reg3 =  Output(UInt(5.W))
-    val regMap_reg4 =  Output(UInt(5.W))
-    val regMap_pre1 =  Output(UInt(7.W))
-    val regMap_pre3 =  Output(UInt(7.W))
-    val regMap_pre2 =  Output(UInt(7.W))
-    val regMap_pre4 =  Output(UInt(7.W))
-    val regMap_regdesA = Output(UInt(5.W))
-    val regMap_regdesB = Output(UInt(5.W))
-    val regMap_cmtdesA = Output(UInt(7.W))
-    val regMap_cmtdesB = Output(UInt(7.W))
-    val regMap_pregdesA = Output(UInt(7.W))
-    val regMap_pregdesB = Output(UInt(7.W))
-    val decode_reg1 =  Output(UInt(5.W))
-    val decode_reg2 =  Output(UInt(5.W))
-    val decode_reg3 =  Output(UInt(5.W))
-    val decode_reg4 =  Output(UInt(5.W))
+//    val regMap_reg1 =  Output(UInt(5.W))
+ //   val regMap_reg2 =  Output(UInt(5.W))
+ //   val regMap_reg3 =  Output(UInt(5.W))
+ //   val regMap_reg4 =  Output(UInt(5.W))
+  //  val regMap_pre1 =  Output(UInt(7.W))
+ //   val regMap_pre3 =  Output(UInt(7.W))
+ //   val regMap_pre2 =  Output(UInt(7.W))
+//    val regMap_pre4 =  Output(UInt(7.W))
+//    val regMap_regdesA = Output(UInt(5.W))
+//    val regMap_regdesB = Output(UInt(5.W))
+//    val regMap_cmtdesA = Output(UInt(7.W))
+//    val regMap_cmtdesB = Output(UInt(7.W))
+//    val regMap_pregdesA = Output(UInt(7.W))
+ //   val regMap_pregdesB = Output(UInt(7.W))
+//    val decode_reg1 =  Output(UInt(5.W))
+ //   val decode_reg2 =  Output(UInt(5.W))
+//    val decode_reg3 =  Output(UInt(5.W))
+ //   val decode_reg4 =  Output(UInt(5.W))
 
     val com_pc =Output(UInt(64.W))
-    val src1 = Output(UInt(32.W))
-    val src2 = Output(UInt(32.W))
-    val src3 = Output(UInt(32.W))
-    val src4 = Output(UInt(32.W))
+ //   val src1 = Output(UInt(32.W))
+ //   val src2 = Output(UInt(32.W))
+ //   val src3 = Output(UInt(32.W))
+ //   val src4 = Output(UInt(32.W))
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
     val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
-    val com_reorderNumA = Output(UInt(6.W))
-    val com_reorderNumB = Output(UInt(6.W))
+//    val com_reorderNumA = Output(UInt(6.W))
+//    val com_reorderNumB = Output(UInt(6.W))
     val com_bpPredTakenA = Output(Bool())
     val com_bpPredTakenB = Output(Bool())
     val com_branchtakenA = Output(Bool())
@@ -252,34 +253,34 @@ class TopWithMemory extends Module {
     val com_dataB = Output(UInt(32.W))
     val com_instA = Output(UInt(32.W))
     val com_instB = Output(UInt(32.W))
-    val read_instA = Output(UInt(32.W))
-    val read_instB = Output(UInt(32.W))
-
-    val fin_A_inst = Output(UInt(64.W))
-    val fin_B_inst = Output(UInt(64.W))
-    val fin_C_inst = Output(UInt(64.W))
-    val fin_D_inst = Output(UInt(64.W))
-    val fin_E_inst = Output(UInt(64.W))
-
-    val fin_A_jumptarget = Output(UInt(64.W))
-    val fin_A_branchtarget = Output(UInt(64.W))
-    val fin_B_jumptarget = Output(UInt(64.W))
-    val fin_B_branchtarget = Output(UInt(64.W))
-
-    val fin_A_wbdata = Output(UInt(32.W))
-    val fin_B_wbdata = Output(UInt(32.W))
-    val fin_C_wbdata = Output(UInt(32.W))
-    val fin_D_wbdata = Output(UInt(32.W))
-    val fin_E_wbdata = Output(UInt(32.W))
-
-    val finA_pregdes = Output(UInt(7.W))
-    val finB_pregdes = Output(UInt(7.W))
-    val finC_pregdes = Output(UInt(7.W))
-    val finD_pregdes = Output(UInt(7.W))
-    val finE_pregdes = Output(UInt(7.W))
-
-    val fin_C_finish = Output(Bool())
-    val fin_C_pregdes = Output(UInt(32.W))
+//    val read_instA = Output(UInt(32.W))
+//    val read_instB = Output(UInt(32.W))
+//
+//    val fin_A_inst = Output(UInt(64.W))
+//    val fin_B_inst = Output(UInt(64.W))
+//    val fin_C_inst = Output(UInt(64.W))
+//    val fin_D_inst = Output(UInt(64.W))
+//    val fin_E_inst = Output(UInt(64.W))
+//
+//    val fin_A_jumptarget = Output(UInt(64.W))
+//    val fin_A_branchtarget = Output(UInt(64.W))
+//    val fin_B_jumptarget = Output(UInt(64.W))
+//    val fin_B_branchtarget = Output(UInt(64.W))
+//
+//    val fin_A_wbdata = Output(UInt(32.W))
+//    val fin_B_wbdata = Output(UInt(32.W))
+//    val fin_C_wbdata = Output(UInt(32.W))
+//    val fin_D_wbdata = Output(UInt(32.W))
+//    val fin_E_wbdata = Output(UInt(32.W))
+//
+//    val finA_pregdes = Output(UInt(7.W))
+//    val finB_pregdes = Output(UInt(7.W))
+//    val finC_pregdes = Output(UInt(7.W))
+//    val finD_pregdes = Output(UInt(7.W))
+//    val finE_pregdes = Output(UInt(7.W))
+//
+//    val fin_C_finish = Output(Bool())
+//    val fin_C_pregdes = Output(UInt(32.W))
     val com_rollback =Output(Bool())
     val mem_writeEnable = Output(Bool()) // 暴露内存写使能信号
     val mem_writeAddr = Output(UInt(64.W)) // 暴露内存写地址
@@ -292,7 +293,7 @@ class TopWithMemory extends Module {
     val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
     val mem_fwdata = Output(UInt(64.W)) // 暴露内存转发数据
   //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
-    val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
+  //  val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
   })
 
   val cpu = Module(new Top)
@@ -322,37 +323,37 @@ class TopWithMemory extends Module {
   io.fetch_instA := cpu.io.fetch_inst_A.inst
   io.fetch_instB := cpu.io.fetch_inst_B.inst
 
-  io.decode_reg1 :=  cpu.io.decode_inst_A.regsrc1
-  io.decode_reg2 :=  cpu.io.decode_inst_A.regsrc2
-  io.decode_reg3 :=  cpu.io.decode_inst_B.regsrc1
-  io.decode_reg4 :=  cpu.io.decode_inst_B.regsrc2
+  //io.decode_reg1 :=  cpu.io.decode_inst_A.regsrc1
+ // io.decode_reg2 :=  cpu.io.decode_inst_A.regsrc2
+ // io.decode_reg3 :=  cpu.io.decode_inst_B.regsrc1
+  //io.decode_reg4 :=  cpu.io.decode_inst_B.regsrc2
 
-  io.regMap_instB := cpu.io.map_inst_B.inst
-  io.regMap_instA := cpu.io.map_inst_A.inst
-  io.regMap_reg1 := cpu.io.map_inst_A.regsrc1
-  io.regMap_reg2 := cpu.io.map_inst_A.regsrc2
-  io.regMap_reg3 := cpu.io.map_inst_B.regsrc1
-  io.regMap_reg4 := cpu.io.map_inst_B.regsrc2
-  io.regMap_pre1 := cpu.io.map_inst_A.pregsrc1
-  io.regMap_pre2 := cpu.io.map_inst_A.pregsrc2
-  io.regMap_pre3 := cpu.io.map_inst_B.pregsrc1
-  io.regMap_pre4 := cpu.io.map_inst_B.pregsrc1
-  io.regMap_regdesA := cpu.io.map_inst_A.regdes
-  io.regMap_regdesB := cpu.io.map_inst_B.regdes
-  io.regMap_pregdesA := cpu.io.map_inst_A.pregdes
-  io.regMap_pregdesB := cpu.io.map_inst_B.pregdes
-  io.regMap_cmtdesA := cpu.io.map_inst_A.cmtdes
-  io.regMap_cmtdesB := cpu.io.map_inst_B.cmtdes
-
-  io.dis_instA := cpu.io.dispatch_inst_A.inst
-  io.dis_instB := cpu.io.dispatch_inst_B.inst
-  io.dis_instC := cpu.io.dispatch_inst_C.inst
+//  io.regMap_instB := cpu.io.map_inst_B.inst
+//  io.regMap_instA := cpu.io.map_inst_A.inst
+ // io.regMap_reg1 := cpu.io.map_inst_A.regsrc1
+ // io.regMap_reg2 := cpu.io.map_inst_A.regsrc2
+ // io.regMap_reg3 := cpu.io.map_inst_B.regsrc1
+ // io.regMap_reg4 := cpu.io.map_inst_B.regsrc2
+//  io.regMap_pre1 := cpu.io.map_inst_A.pregsrc1
+ // io.regMap_pre2 := cpu.io.map_inst_A.pregsrc2
+ // io.regMap_pre3 := cpu.io.map_inst_B.pregsrc1
+ // io.regMap_pre4 := cpu.io.map_inst_B.pregsrc1
+//  io.regMap_regdesA := cpu.io.map_inst_A.regdes
+//  io.regMap_regdesB := cpu.io.map_inst_B.regdes
+//  io.regMap_pregdesA := cpu.io.map_inst_A.pregdes
+//  io.regMap_pregdesB := cpu.io.map_inst_B.pregdes
+//  io.regMap_cmtdesA := cpu.io.map_inst_A.cmtdes
+//  io.regMap_cmtdesB := cpu.io.map_inst_B.cmtdes
+//
+//  io.dis_instA := cpu.io.dispatch_inst_A.inst
+//  io.dis_instB := cpu.io.dispatch_inst_B.inst
+//  io.dis_instC := cpu.io.dispatch_inst_C.inst
 
   io.com_pc :=cpu.io.com_inst_A.pc
-  io.src1 := cpu.io.com_inst_A.src1
-  io.src2 := cpu.io.com_inst_A.src2
-  io.src3 := cpu.io.com_inst_B.src1
-  io.src4 := cpu.io.com_inst_B.src2
+//  io.src1 := cpu.io.com_inst_A.src1
+//  io.src2 := cpu.io.com_inst_A.src2
+//  io.src3 := cpu.io.com_inst_B.src1
+//  io.src4 := cpu.io.com_inst_B.src2
   io.com_presrc1 := cpu.io.com_inst_A.pregsrc1
   io.com_presrc2 := cpu.io.com_inst_A.pregsrc2
   io.com_presrc3 := cpu.io.com_inst_B.pregsrc1
@@ -367,36 +368,36 @@ class TopWithMemory extends Module {
 
   io.com_dataA :=cpu.io.com_inst_A.wbdata
   io.com_dataB :=cpu.io.com_inst_B.wbdata
-  io.com_reorderNumA := cpu.io.com_inst_A.reOrderNum
-  io.com_reorderNumB := cpu.io.com_inst_B.reOrderNum
-  io.read_instA := cpu.io.read_inst_A.inst
-  io.read_instB := cpu.io.read_inst_B.inst
+//  io.com_reorderNumA := cpu.io.com_inst_A.reOrderNum
+//  io.com_reorderNumB := cpu.io.com_inst_B.reOrderNum
+//  io.read_instA := cpu.io.read_inst_A.inst
+//  io.read_instB := cpu.io.read_inst_B.inst
 
-  io.fin_A_inst := cpu.io.fin_A.inst
-  io.fin_B_inst := cpu.io.fin_B.inst
-  io.fin_C_inst := cpu.io.fin_C.inst
-  io.fin_D_inst := cpu.io.fin_D.inst
-  io.fin_E_inst := cpu.io.fin_E.inst
+//  io.fin_A_inst := cpu.io.fin_A.inst
+//  io.fin_B_inst := cpu.io.fin_B.inst
+//  io.fin_C_inst := cpu.io.fin_C.inst
+//  io.fin_D_inst := cpu.io.fin_D.inst
+ // io.fin_E_inst := cpu.io.fin_E.inst
 
-  io.fin_A_wbdata := cpu.io.fin_A.wbdata
-  io.fin_B_wbdata := cpu.io.fin_B.wbdata
-  io.fin_C_wbdata := cpu.io.fin_C.wbdata
-  io.fin_D_wbdata := cpu.io.fin_D.wbdata
-  io.fin_E_wbdata := cpu.io.fin_E.wbdata
+ // io.fin_A_wbdata := cpu.io.fin_A.wbdata
+//  io.fin_B_wbdata := cpu.io.fin_B.wbdata
+//  io.fin_C_wbdata := cpu.io.fin_C.wbdata
+//  io.fin_D_wbdata := cpu.io.fin_D.wbdata
+//  io.fin_E_wbdata := cpu.io.fin_E.wbdata
 
-  io.finA_pregdes := cpu.io.fin_A.pregdes
-  io.finB_pregdes := cpu.io.fin_B.pregdes
-  io.finC_pregdes := cpu.io.fin_C.pregdes
-  io.finD_pregdes := cpu.io.fin_D.pregdes
-  io.finE_pregdes := cpu.io.fin_E.pregdes
+ // io.finA_pregdes := cpu.io.fin_A.pregdes
+ // io.finB_pregdes := cpu.io.fin_B.pregdes
+ // io.finC_pregdes := cpu.io.fin_C.pregdes
+ // io.finD_pregdes := cpu.io.fin_D.pregdes
+ // io.finE_pregdes := cpu.io.fin_E.pregdes
 
-  io.fin_A_jumptarget := cpu.io.fin_A.jump.actTarget
-  io.fin_A_branchtarget := cpu.io.fin_A.branch.target
-  io.fin_B_jumptarget := cpu.io.fin_B.jump.actTarget
-  io.fin_B_branchtarget := cpu.io.fin_B.branch.target
-  io.fin_C_pregdes := cpu.io.fin_C.pregdes
+ // io.fin_A_jumptarget := cpu.io.fin_A.jump.actTarget
+ // io.fin_A_branchtarget := cpu.io.fin_A.branch.target
+ // io.fin_B_jumptarget := cpu.io.fin_B.jump.actTarget
+ // io.fin_B_branchtarget := cpu.io.fin_B.branch.target
+ // io.fin_C_pregdes := cpu.io.fin_C.pregdes
 
-  io.fin_C_finish := cpu.io.fin_C.finish
+ // io.fin_C_finish := cpu.io.fin_C.finish
   io.fetchblock := cpu.io.fetchBlock
 
   io.com_bpPredTargetA := cpu.io.com_inst_A.bpPredTarget
@@ -417,17 +418,17 @@ class TopWithMemory extends Module {
   io.com_EnQueuePointer := cpu.io.com_EnQueuePointer // 提交阶段的队列指针
   io.com_DeQueuePointer := cpu.io.com_DeQueuePointer // 提交阶段的寄存器指针
 //  io.com_bank := cpu.io.com_bank // 暴露
-  io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
-  io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
+   io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
+   io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
   io.mem_readAddr := cpu.io.DataRam.read_address // 暴露内存读地址
-  io.mem_writeData := cpu.io.DataRam.data_wdata // 暴露内存写数据
+   io.mem_writeData := cpu.io.DataRam.data_wdata // 暴露内存写数据
   io.mem_rdata := data_memory.io.mem_lsu.data // 暴露内存读数据
   io.mem_func3_write := data_memory.io.ex_mem.func3_write // 暴露内存读地址
   io.mem_func3_read := data_memory.io.ex_mem.func3_read // 暴露内存读功能码
   io.mem_Valid := cpu.io.mem_Valid // 暴露内存指令的有效性
   io.mem_inst := cpu.io.mem_inst.inst // 暴露内存指令提交
   io.mem_fwdata := cpu.io.d_data
-  io.read_func3 := cpu.io.read_func3 // 暴露读取功能码
+ // io.read_func3 := cpu.io.read_func3 // 暴露读取功能码
 }
 
 object ExVerilog extends App {
