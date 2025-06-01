@@ -35,7 +35,8 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     val mem_lsu = new mem_lsu_c   //read传出去的
   })
 
-  val memInside = Mem(memDepth, Vec(4, UInt(8.W)))
+  val datamemInside = Mem(memDepth, Vec(4, UInt(8.W)))
+  val instmemInside = Mem(memDepth, Vec(4, UInt(8.W)))
 
   // 只定义32位写入缓冲区
   val memWriteVec = Wire(Vec(4, UInt(8.W)))
@@ -54,7 +55,8 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     memWriteVec(i) := alignedData(i*8+7, i*8)
   }
 
-  loadMemoryFromFile(memInside, "G:\\testdata\\dhrystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(datamemInside, "C:\\Users\\Lenovo\\Desktop\\Code\\chisel3.5\\src\\main\\dhrystone\\dhrystone.data", MemoryLoadFileType.Hex)
+  loadMemoryFromFile(instmemInside, "C:\\Users\\Lenovo\\Desktop\\Code\\chisel3.5\\src\\main\\dhrystone\\dhrystone.data", MemoryLoadFileType.Hex)
 
   // 内存地址计算（字对齐）
   val writeAddr   = Wire(UInt(32.W))
@@ -70,21 +72,22 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
     io.mem_id.inst(i) := Mux(
       io.reset,
       0x13.U,  // NOP指令
-      memInside(io.if_mem.instAddr(31,2) + i.U).reduce((acc, elem) => Cat(elem, acc))
+      instmemInside(io.if_mem.instAddr(31,2) + i.U).reduce((acc, elem) => Cat(elem, acc))
     )
   }
 
   // 关键修改点3: 数据读取改为组合读
-  val rawData = memInside(readAddr).reduce((acc, elem) => Cat(elem, acc))
+  val rawData = datamemInside(readAddr).reduce((acc, elem) => Cat(elem, acc))
 
   // 根据地址低2位选择对应字节位置（修正后）
-  val alignedWord = MuxLookup(io.ex_mem.dataAddr_read(1, 0), rawData, Seq(
-    0.U -> rawData,
-    1.U -> Cat(rawData(7, 0), rawData(31, 8)),   // 正确取出15:8位到低8位
-    2.U -> Cat(rawData(15, 0), rawData(31, 16)), // 保持不变
-    3.U -> Cat(rawData(23, 0), rawData(31, 24))  // 保持不变
-  ))
+//  val alignedWord = MuxLookup(io.ex_mem.dataAddr_read(1, 0), rawData, Seq(
+//    0.U -> rawData,
+//    1.U -> Cat(rawData(7, 0), rawData(31, 8)),   // 正确取出15:8位到低8位
+//    2.U -> Cat(rawData(15, 0), rawData(31, 16)), // 保持不变
+//    3.U -> Cat(rawData(23, 0), rawData(31, 24))  // 保持不变
+//  ))
 
+  val alignedWord = rawData
   // 根据func3进行数据宽度处理和符号扩展
   val processedData = Wire(UInt(32.W))
   // 首先提供默认值
@@ -147,18 +150,7 @@ class mem(memDepth: Int, instWidth: Int) extends Module {
       val char = io.ex_mem.writeData(7, 0).asUInt
       printf("%c", char)  // 只打印对应字符
     }
-    memInside.write(writeAddr, memWriteVec, memChoose)
+    datamemInside.write(writeAddr, memWriteVec, memChoose)
   }
 }
 
-//// 添加Verilog生成对象
-//object memVerilog extends App {
-//  (new chisel3.stage.ChiselStage).emitVerilog(
-//    new mem(),
-//    args = Array(
-//      "-o", "mem.v",
-//      "--target-dir", "generated/mem",
-//      "--emission-options", "disableMemRandomization,disableRegisterRandomization"
-//    )
-//  )
-//}
