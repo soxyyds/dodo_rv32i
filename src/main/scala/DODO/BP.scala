@@ -49,6 +49,7 @@ class BranchPredictor extends Module {
       val pc_0 = Input(UInt(32.W))
       val pc_1 = Input(UInt(32.W))
 
+
       val hit_0 = Output(Bool())
       val target_0 = Output(UInt(32.W))
       val is_jump_0 = Output(Bool())
@@ -120,8 +121,43 @@ class BranchPredictor extends Module {
     }
   }
 
-  // PHT实现
-  class PHT extends Module {
+  //  // PHT实现
+  //  class PHT extends Module {
+  //    val io = IO(new Bundle {
+  //      val index_0 = Input(UInt(log2Ceil(PHT_SIZE).W))
+  //      val index_1 = Input(UInt(log2Ceil(PHT_SIZE).W))
+  //
+  //      val taken_0 = Output(Bool())
+  //      val taken_1 = Output(Bool())
+  //
+  //      val update = Input(Bool())
+  //      val update_index = Input(UInt(log2Ceil(PHT_SIZE).W))
+  //      val update_taken = Input(Bool())
+  //    })
+  //
+  //    // 两个方向预测表 - Taken PHT和Not-Taken PHT
+  //    val takenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(1.U(2.W))))     // 初始化为弱Taken (01)
+  //    val notTakenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(2.U(2.W))))  // 初始化为弱Not-Taken (10)
+  //
+  //    io.taken_0 := pht(io.index_0)(1)
+  //    io.taken_1 := pht(io.index_1)(1)
+  //
+  //    when(io.update) {
+  //      val counter = pht(io.update_index)
+  //      when(io.update_taken) {
+  //        when(counter =/= 3.U) {
+  //          pht(io.update_index) := counter + 1.U
+  //        }
+  //      }.otherwise {
+  //        when(counter =/= 0.U) {
+  //          pht(io.update_index) := counter - 1.U
+  //        }
+  //      }
+  //    }
+  //  }
+
+  // 将PHT类修改为Bi-mode设计
+  class BiModePHT extends Module {
     val io = IO(new Bundle {
       val index_0 = Input(UInt(log2Ceil(PHT_SIZE).W))
       val index_1 = Input(UInt(log2Ceil(PHT_SIZE).W))
@@ -134,20 +170,64 @@ class BranchPredictor extends Module {
       val update_taken = Input(Bool())
     })
 
-    val pht = RegInit(VecInit(Seq.fill(PHT_SIZE)(0.U(2.W))))
+    // 两个方向预测表 - Taken PHT和Not-Taken PHT
+    val takenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(1.U(2.W))))     // 初始化为弱Taken (01)
+    val notTakenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(2.U(2.W))))  // 初始化为弱Not-Taken (10)
 
-    io.taken_0 := pht(io.index_0)(1)
-    io.taken_1 := pht(io.index_1)(1)
+    // 选择器表 - 决定使用哪个预测表
+    val choicePredictor = RegInit(VecInit(Seq.fill(PHT_SIZE)(1.U(2.W)))) // 初始值偏向Taken表
+
+    // 选择使用哪个预测表
+    val use_taken_table_0 = choicePredictor(io.index_0)(1)
+    val use_taken_table_1 = choicePredictor(io.index_1)(1)
+
+    // 从两个表中获取预测结果
+    val taken_pred_0 = takenPHT(io.index_0)(1)
+    val notTaken_pred_0 = notTakenPHT(io.index_0)(1)
+    val taken_pred_1 = takenPHT(io.index_1)(1)
+    val notTaken_pred_1 = notTakenPHT(io.index_1)(1)
+
+    // 最终预测结果由选择器决定
+    io.taken_0 := Mux(use_taken_table_0, taken_pred_0, notTaken_pred_0)
+    io.taken_1 := Mux(use_taken_table_1, taken_pred_1, notTaken_pred_1)
 
     when(io.update) {
-      val counter = pht(io.update_index)
+      // 更新选择器
+      val choice = choicePredictor(io.update_index)
       when(io.update_taken) {
-        when(counter =/= 3.U) {
-          pht(io.update_index) := counter + 1.U
+        // 实际taken时，增强Taken表选择倾向
+        when(choice =/= 3.U) {
+          choicePredictor(io.update_index) := choice + 1.U
         }
       }.otherwise {
-        when(counter =/= 0.U) {
-          pht(io.update_index) := counter - 1.U
+        // 实际not-taken时，增强Not-Taken表选择倾向
+        when(choice =/= 0.U) {
+          choicePredictor(io.update_index) := choice - 1.U
+        }
+      }
+
+      // 无论选择哪个表，两个表都要更新
+      // 更新Taken表
+      val takenCounter = takenPHT(io.update_index)
+      when(io.update_taken) {
+        when(takenCounter =/= 3.U) {
+          takenPHT(io.update_index) := takenCounter + 1.U
+        }
+      }.otherwise {
+        when(takenCounter =/= 0.U) {
+          takenPHT(io.update_index) := takenCounter - 1.U
+        }
+      }
+
+      // 更新Not-Taken表
+      val notTakenCounter = notTakenPHT(io.update_index)
+      when(io.update_taken) {
+        when(notTakenCounter =/= 3.U) {
+          notTakenPHT(io.update_index) := notTakenCounter + 1.U
+        }
+      }.otherwise {
+        when(notTakenCounter =/= 0.U) {
+          notTakenPHT(io.update_index) := notTakenCounter - 1.U
         }
       }
     }
@@ -155,7 +235,7 @@ class BranchPredictor extends Module {
 
   val btb = Module(new BTB)
   val ghr = Module(new GHR)
-  val pht = Module(new PHT)
+  val pht = Module(new BiModePHT)  // 使用Bi-mode PHT
 
   // Wire定义修改
   val index_0 = Wire(UInt(10.W))  // 10.W
@@ -194,15 +274,3 @@ class BranchPredictor extends Module {
   pht.io.update_index := io.ex_pred_index
   pht.io.update_taken := io.ex_is_taken
 }
-
-// 添加Verilog生成对象
-object BranchPredictorVerilog extends App {
-  (new chisel3.stage.ChiselStage).emitVerilog(
-    new BranchPredictor(),
-    args = Array(
-      "-o", "branch_predictor.v",  // 输出文件名
-      "--target-dir", "generated/branch_predictor"
-    )
-  )
-}
-

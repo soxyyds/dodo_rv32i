@@ -48,6 +48,18 @@ class Memory extends Module {
         processedwdata := Cat(0.U(32.W), io.ForwardStore.data(31, 0)) // LW - 字加载，直接使用32位数据
       }
     }
+  }.elsewhen(io.CmtA.store.Valid && io.CmtA.Valid && io.CmtA.store.addr(31,2) === INST.load.addr(31,2)) { // 如果 Store Forwarding 有效且地址匹配
+    switch(io.CmtA.store.mask) {
+      is(0.U) { // SB - 字节存储，拼接成64位数据
+        processedwdata := Cat(0.U(32.W), io.CmtA.store.data(7,0),io.CmtA.store.data(7,0),io.CmtA.store.data(7,0),io.CmtA.store.data(7,0))
+      }
+      is(1.U) { // SH - 半字存储，拼接成64位数据
+        processedwdata := Cat(0.U(32.W), io.CmtA.store.data(15, 0), io.CmtA.store.data(15, 0))
+      }
+      is(2.U) { // SW - 字存储，直接使用64位数据
+        processedwdata := Cat(0.U(32.W), io.CmtA.store.data(31, 0)) // LW - 字加载，直接使用32位数据
+      }
+    }
   }.otherwise {   // 如果没有 Store Forwarding，则使用默认值
     processedwdata := Cat(0.U(32.W), io.ForwardStore.data(31, 0))
   }
@@ -76,6 +88,26 @@ class Memory extends Module {
         }
       }
       is(2.U) { // LW - 字加载，掩码为0xFFFFFFFF
+        wmask := 0xFFFFFFFFL.U(64.W) // 整个字
+      }
+    }
+  }.elsewhen(io.CmtA.store.Valid && io.CmtA.Valid && io.CmtA.store.addr(31,2) === INST.load.addr(31,2)){
+    switch(io.CmtA.store.mask) {
+      is(0.U) { // SB - 字节存储，掩码为0x000000FF
+        switch(io.CmtA.store.addr(1,0)) {
+          is(0.U) { wmask := 0x000000FFL.U(64.W) } // 低字节
+          is(1.U) { wmask := 0x0000FF00L.U(64.W) } // 次低字节
+          is(2.U) { wmask := 0x00FF0000L.U(64.W) } // 次高字节
+          is(3.U) { wmask := 0xFF000000L.U(64.W) } // 高字节
+        }
+      }
+      is(1.U) { // SH - 半字存储，掩码为0x0000FFFF
+        switch(io.CmtA.store.addr(1,0)) {
+          is(0.U) { wmask := 0x0000FFFFL.U(64.W) } // 低半字
+          is(1.U) { wmask := 0xFFFF0000L.U(64.W) } // 高半字
+        }
+      }
+      is(2.U) { // SW - 字存储，掩码为0xFFFFFFFF
         wmask := 0xFFFFFFFFL.U(64.W) // 整个字
       }
     }

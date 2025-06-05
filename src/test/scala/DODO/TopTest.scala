@@ -1,34 +1,34 @@
-package DODO
-
-import chisel3._
-import chiseltest._
-import org.scalatest.flatspec.AnyFlatSpec
-
-class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
-  behavior of "TopWithMemory"
-
-  it should "执行DHRYSTONE基准测试" in {
-    test(new TopWithMemory) { dut =>
-      dut.clock.setTimeout(0) // 禁用超时
-      println("开始执行DHRYSTONE基准测试...")
-
-      val maxCycles = 50000
-      for (cycle <- 1 to maxCycles) {
-        if(dut.io.writeEnable.peek().litValue == 1 && dut.io.writeAddr.peek().litValue == 0x10001ff1L ){
-          val char = (dut.io.writeData.peek().litValue & 0xFF).toChar
-          print(char)
-        }
-        if(cycle % 10000 ==0){
-          println(s"f周期cycle = 0x${cycle}%08X,")
-        }
-
-        dut.clock.step(1) // 让时钟前进一步
-     //   last_fetchblock = now_fetchblock
-      }
-    }
-      println("DHRYSTONE基准测试执行完成")
-  }
-}
+//package DODO
+//
+//import chisel3._
+//import chiseltest._
+//import org.scalatest.flatspec.AnyFlatSpec
+//
+//class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
+//  behavior of "TopWithMemory"
+//
+//  it should "执行DHRYSTONE基准测试" in {
+//    test(new TopWithMemory) { dut =>
+//      dut.clock.setTimeout(0) // 禁用超时
+//      println("开始执行DHRYSTONE基准测试...")
+//
+//      val maxCycles = 50000
+//      for (cycle <- 1 to maxCycles) {
+//        if(dut.io.writeEnable.peek().litValue == 1 && dut.io.writeAddr.peek().litValue == 0x10001ff1L ){
+//          val char = (dut.io.writeData.peek().litValue & 0xFF).toChar
+//          print(char)
+//        }
+//        if(cycle % 10000 ==0){
+//          println(s"f周期cycle = 0x${cycle}%08X,")
+//        }
+//
+//        dut.clock.step(1) // 让时钟前进一步
+//     //   last_fetchblock = now_fetchblock
+//      }
+//    }
+//      println("DHRYSTONE基准测试执行完成")
+//  }
+//}
 //       if (last_fetchblock ==0  &&  now_fetchblock == 1) {
 //// 直接从顶层IO访问PC和指令
 //val pc = dut.io.pc.peek().litValue()
@@ -126,3 +126,47 @@ class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
 //  }
 
 //       }
+
+package DODO
+
+import chisel3._
+import chiseltest._
+import org.scalatest.flatspec.AnyFlatSpec
+import java.io.{FileWriter, PrintWriter}
+
+class TopwithMemoryTest extends AnyFlatSpec with ChiselScalatestTester {
+  behavior of "TopWithMemory"
+
+  it should "执行DHRYSTONE基准测试" in {
+    // 创建输出文件
+    val outputFile = new PrintWriter(new FileWriter("output"))
+
+    test(new TopWithMemory) { dut =>
+      dut.clock.setTimeout(0) // 禁用超时
+      println("开始执行DHRYSTONE基准测试...")
+
+      val maxCycles = 110000
+      for (cycle <- 1 to maxCycles) {
+        if(dut.io.writeEnable.peek().litValue == 1 && dut.io.writeAddr.peek().litValue == 0x10001ff1L) {
+          val char = (dut.io.writeData.peek().litValue & 0xFF).toChar
+          // 将字符写入文件
+          outputFile.write(char)
+          // 同时也在控制台显示
+          print(char)
+          // 确保及时写入文件
+          outputFile.flush()
+        }
+
+        if(cycle % 10000 == 0) {
+          println(s"周期cycle = 0x${cycle}%08X,")
+        }
+
+        dut.clock.step(1) // 让时钟前进一步
+      }
+    }
+
+    // 关闭文件
+    outputFile.close()
+    println("DHRYSTONE基准测试执行完成")
+  }
+}
