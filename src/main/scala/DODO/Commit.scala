@@ -36,6 +36,9 @@ class Commit extends Module {
   io.ReOrderNumB := EnQueuePointer + 1.U
 
   val Bank = RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val cycle =RegInit(0.U(32.W)) // 用于调试，记录周期数
+  val time = RegInit(0.U(32.W)) // 用于调试，记录时间
+  time := time + 1.U
 
   val CmtA = Bank(DeQueuePointer)
   val CmtB = Bank(DeQueuePointer + 1.U)
@@ -57,7 +60,9 @@ class Commit extends Module {
   val Bready = (Aready && CmtB.Valid && CmtB.finish && !CmtBranchJump && !io.Rollback && !CmtBisPrint && !CmtBisHalt && !CmtBisStore ).asBool
   io.CmtA := Mux(Aready, CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
   io.CmtB := Mux(Bready, CmtB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-
+  when (Aready || Bready) {
+    cycle := cycle + Aready + Bready // 每次提交指令时增加周期计数
+  }
   val Aenter = (!io.FetchBlock && io.EnA.Valid).asBool
   val Benter = (Aenter && io.EnB.Valid).asBool
 
@@ -77,8 +82,22 @@ class Commit extends Module {
     when(io.FinE.Valid && io.FinE.finish) { Bank(io.FinE.reOrderNum) := io.FinE }
     EnQueuePointer := EnQueuePointer + Aenter.asUInt + Benter.asUInt
     DeQueuePointer := DeQueuePointer + Aready.asUInt + Bready.asUInt
-    when(Aready) { Bank(DeQueuePointer) := WireInit(0.U.asTypeOf(new InstCtrlBlock())) }
-    when(Bready) { Bank(DeQueuePointer + 1.U) := WireInit(0.U.asTypeOf(new InstCtrlBlock())) }
+    when(Aready) {
+      Bank(DeQueuePointer) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      when(io.CmtA.isa.RDTIME){
+        io.CmtA.wbdata := time //将时间戳写入CmtA的wbdata
+      }.elsewhen(io.CmtA.isa.RDCYCLE){
+        io.CmtA.wbdata := cycle //将周期数写入CmtA的wbdata
+      }
+    }
+    when(Bready) {
+      Bank(DeQueuePointer + 1.U) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      when(io.CmtB.isa.RDTIME){
+        io.CmtB.wbdata := time //将时间戳写入CmtB的wbdata
+      }.elsewhen(io.CmtB.isa.RDCYCLE){
+        io.CmtB.wbdata := cycle //将周期数写入CmtB的wbdata
+      }
+    }
   }
 
   //load forward

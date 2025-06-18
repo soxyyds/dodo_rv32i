@@ -121,41 +121,6 @@ class BranchPredictor extends Module {
     }
   }
 
-  //  // PHT实现
-  //  class PHT extends Module {
-  //    val io = IO(new Bundle {
-  //      val index_0 = Input(UInt(log2Ceil(PHT_SIZE).W))
-  //      val index_1 = Input(UInt(log2Ceil(PHT_SIZE).W))
-  //
-  //      val taken_0 = Output(Bool())
-  //      val taken_1 = Output(Bool())
-  //
-  //      val update = Input(Bool())
-  //      val update_index = Input(UInt(log2Ceil(PHT_SIZE).W))
-  //      val update_taken = Input(Bool())
-  //    })
-  //
-  //    // 两个方向预测表 - Taken PHT和Not-Taken PHT
-  //    val takenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(1.U(2.W))))     // 初始化为弱Taken (01)
-  //    val notTakenPHT = RegInit(VecInit(Seq.fill(PHT_SIZE)(2.U(2.W))))  // 初始化为弱Not-Taken (10)
-  //
-  //    io.taken_0 := pht(io.index_0)(1)
-  //    io.taken_1 := pht(io.index_1)(1)
-  //
-  //    when(io.update) {
-  //      val counter = pht(io.update_index)
-  //      when(io.update_taken) {
-  //        when(counter =/= 3.U) {
-  //          pht(io.update_index) := counter + 1.U
-  //        }
-  //      }.otherwise {
-  //        when(counter =/= 0.U) {
-  //          pht(io.update_index) := counter - 1.U
-  //        }
-  //      }
-  //    }
-  //  }
-
   // 将PHT类修改为Bi-mode设计
   class BiModePHT extends Module {
     val io = IO(new Bundle {
