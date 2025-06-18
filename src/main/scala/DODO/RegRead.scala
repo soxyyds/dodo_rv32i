@@ -26,9 +26,6 @@ class RegRead extends Module{
     val FinD = Input(new InstCtrlBlock)
     val FinE = Input(new InstCtrlBlock)
 
-    val CmtA = Input(new InstCtrlBlock) // 来自 Commit 阶段的指令控制块
-    val CmtB = Input(new InstCtrlBlock) // 来自 Commit 阶段的指令控制块
-
     val Rollback = Input(Bool())
 
   })
@@ -39,12 +36,6 @@ class RegRead extends Module{
   val INSTC = RegNext(io.DPRRC)
 
   val PhyRegFile = new AbstractRegBank(128,32)
-  val cycle = RegInit(0.U(32.W))
-  when(io.CmtA.Valid&&io.CmtA.finish || io.CmtB.Valid&&io.CmtB.finish){
-    cycle := cycle + (io.CmtA.Valid && io.CmtA.finish) + (io.CmtB.Valid&&io.CmtB.finish) //每次Commit阶段完成时，周期加1
-  }
-  val time = RegInit(0.U(32.W))
-  time := time + 1.U //每个周期加1
 
   val src1 = PhyRegFile.read(INSTA.pregsrc1)
   val src2 = PhyRegFile.read(INSTA.pregsrc2)
@@ -113,18 +104,18 @@ class RegRead extends Module{
       io.FinA := GenFin(Afinish, BJU1.io.jump, BJU1.io.branch, INSTA)
     }.otherwise{
       when(INSTA.isa.RDTIME){
-        io.FinA := GenCSR(INSTA.isa.RDTIME, time, INSTA) // RDTIME指令，返回当前周期数
+        io.FinA := GenCSR(INSTA.isa.RDTIME,  INSTA) // RDTIME指令，返回当前周期数
       }.otherwise{
-        io.FinA := GenCSR(INSTA.isa.RDCYCLE, cycle, INSTA) // 其他CSR指令
+        io.FinA := GenCSR(INSTA.isa.RDCYCLE, INSTA) // 其他CSR指令
       }
     }
     when(!csrB){
       io.FinB := GenFin(Bfinish, BJU2.io.jump, BJU2.io.branch, INSTB)
     }.otherwise{
       when(INSTB.isa.RDCYCLE){
-        io.FinB := GenCSR(INSTB.isa.RDCYCLE, cycle, INSTB) // RDCYCLE指令，返回当前周期数
+        io.FinB := GenCSR(INSTB.isa.RDCYCLE, INSTB) // RDCYCLE指令，返回当前周期数
       }.otherwise{
-        io.FinB := GenCSR(INSTB.isa.RDTIME, time, INSTB) // 其他CSR指令
+        io.FinB := GenCSR(INSTB.isa.RDTIME, INSTB) // 其他CSR指令
       }
     }
   }
@@ -158,7 +149,7 @@ class RegRead extends Module{
     ICB.bppredIndex := DPRR.bppredIndex
     ICB    //返回值，将生成的指令信息返回给调用者
   }
-  def GenCSR(finish: Bool, csr_data: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
+  def GenCSR(finish: Bool, DPRR: InstCtrlBlock): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
     ICB.Valid := DPRR.Valid
     ICB.inst := DPRR.inst
@@ -176,13 +167,13 @@ class RegRead extends Module{
     ICB.src1 := DPRR.src1
     ICB.src2 := DPRR.src2
     ICB.imm := DPRR.imm
-    ICB.wbdata := csr_data
+    ICB.wbdata := DPRR.wbdata
     ICB.jump := DPRR.jump
     ICB.branch := DPRR.branch
     ICB.load := DPRR.load
     ICB.store := DPRR.store
     ICB.csr_addr := DPRR.csr_addr
-    ICB.csr_wdata := csr_data
+    ICB.csr_wdata := DPRR.csr_wdata
     ICB.bpPredTaken := DPRR.bpPredTaken
     ICB.bpPredTarget := DPRR.bpPredTarget
     ICB.bppredIndex := DPRR.bppredIndex

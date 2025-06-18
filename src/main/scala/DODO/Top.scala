@@ -31,7 +31,7 @@ class Top extends Module{
     val com_inst_B = Output(new InstCtrlBlock)
     val com_EnQueuePointer = Output(UInt(6.W)) // 提交阶段的队列指针
     val com_DeQueuePointer = Output(UInt(6.W)) // 提交阶段的寄存器指针
- //   val com_bank = Output(Vec(64, new InstCtrlBlock()))
+    val com_bank = Output(Vec(64, new InstCtrlBlock()))
     val fin_A = Output(new InstCtrlBlock)
     val fin_B = Output(new InstCtrlBlock)
     val fin_C = Output(new InstCtrlBlock)
@@ -116,8 +116,8 @@ class Top extends Module{
   Commit.io.CmtA <> RegMap.io.CmtA//CmtA改成了cmt_A
   Commit.io.CmtB <> RegMap.io.CmtB
   Commit.io.CmtA <> Memory.io.CmtA
-  Commit.io.CmtB <> RegRead.io.CmtB //CmtB改成了cmt_B
-  Commit.io.CmtA <> RegRead.io.CmtA
+  Commit.io.CmtB <> InstFetch.io.CmtB //CmtB改成了cmt_B
+
   // dispatch
   Dispatch.io.regstate <> RegMap.io.PhyRegStates //PhyRegStates改成了regstate
 
@@ -284,7 +284,7 @@ class TopWithMemory extends Module {
     val mem_inst = Output(UInt(32.W)) // 暴露内存指令提交
     val mem_Valid = Output(Bool()) // 暴露内存指令的有效性
  //   val mem_fwdata = Output(UInt(64.W)) // 暴露内存转发数据
-  //  val com_bank = Output(Vec(64, new InstCtrlBlock()))
+    val com_bank = Output(Vec(64, new InstCtrlBlock()))
   //w  val read_func3 = Output(UInt(3.W)) // 暴露读取功能码
   })
 
@@ -409,7 +409,7 @@ class TopWithMemory extends Module {
 
   io.com_EnQueuePointer := cpu.io.com_EnQueuePointer // 提交阶段的队列指针
   io.com_DeQueuePointer := cpu.io.com_DeQueuePointer // 提交阶段的寄存器指针
-//  io.com_bank := cpu.io.com_bank // 暴露
+  io.com_bank := cpu.io.com_bank // 暴露
   io.mem_writeEnable := cpu.io.DataRam.data_wen // 暴露内存写使能信号
   io.mem_writeAddr := cpu.io.DataRam.data_address // 暴露内存写地址
   io.mem_readAddr := cpu.io.DataRam.read_address // 暴露内存读地址

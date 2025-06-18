@@ -12,6 +12,7 @@ class InstFetch extends Module {
 
     // 来自 Commit 阶段的反馈（实际跳转/分支结果）
     val CmtA = Input(new InstCtrlBlock)
+    val CmtB = Input(new InstCtrlBlock)
     // 流水线控制信号
     val FetchBlock = Input(Bool())  // 阻塞信号(如 Cache Miss)
     val Rollback = Input(Bool())    // 分支预测失败回滚
@@ -78,7 +79,16 @@ class InstFetch extends Module {
   val InstB = Mux(Bp.io.pred_taken_0, false.B, io.Inst_In_B)
   val PCA = PC
   val PCB = PC + 4.U
-
+  val cycle =RegInit(0.U(32.W)) // 用于调试，记录周期数
+  val time = RegInit(0.U(32.W)) // 用于调试，记录时间
+  time := time + 1.U
+  val csrA_time = io.IFIDA.inst === BitPat("b110000000001_?????_010_?????_1110011")
+  val csrA_cycle = io.IFIDA.inst === BitPat("b110000000000_?????_010_?????_1110011")
+  val csrB_time = io.IFIDB.inst === BitPat("b110000000001_?????_010_?????_1110011")
+  val csrB_cycle = io.IFIDA.inst === BitPat("b110000000000_?????_010_?????_1110011")
+  when(io.CmtA.Valid&&io.CmtA.finish || io.CmtB.Valid&&io.CmtB.finish){
+    cycle := cycle + (io.CmtA.Valid && io.CmtA.finish) + (io.CmtB.Valid&&io.CmtB.finish) //每次Commit阶段完成时，周期加1
+  }
   io.addressout := PC
 
 
@@ -86,12 +96,12 @@ class InstFetch extends Module {
     io.IFIDA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
     io.IFIDB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
   }.otherwise {
-    io.IFIDA := GenICB(ValidA, InstA, PCA,Bp.io.pred_index_0, Bp.io.pred_taken_0, Bp.io.pred_target_0)
-    io.IFIDB := GenICB(ValidB, InstB, PCB, Bp.io.pred_index_1, Bp.io.pred_taken_1, Bp.io.pred_target_1)
+    io.IFIDA := GenICB(ValidA, InstA, PCA,Bp.io.pred_index_0, Bp.io.pred_taken_0, Bp.io.pred_target_0,csrA_cycle,csrA_time)
+    io.IFIDB := GenICB(ValidB, InstB, PCB, Bp.io.pred_index_1, Bp.io.pred_taken_1, Bp.io.pred_target_1,csrB_cycle,csrB_time)
   }
 
   //实际上只生成了指令控制块生成函数,构造一个空的指令控制块(InstCtrlBlock),仅填充有效位、指令内容和 PC,其余字段由后续流水线阶段赋值。
-  def GenICB(Valid: Bool, inst: UInt, pc: UInt, pred_index:UInt, pred_taken:UInt, pred_target:UInt): InstCtrlBlock = {
+  def GenICB(Valid: Bool, inst: UInt, pc: UInt, pred_index:UInt, pred_taken:UInt, pred_target:UInt,csr_cycle:Bool,csr_time:Bool): InstCtrlBlock = {
     val ICB = Wire(new InstCtrlBlock)
     ICB.Valid := Valid//有效位
     ICB.inst := inst//指令内容
@@ -109,7 +119,13 @@ class InstFetch extends Module {
     ICB.src1 := 0.U
     ICB.src2 := 0.U
     ICB.imm := WireInit(0.U.asTypeOf(new IMM()))
-    ICB.wbdata := 0.U
+    when(csr_time) {
+      io.CmtA.wbdata := time //将时间戳写入CmtA的wbdata
+    }.elsewhen(csr_cycle) {
+      io.CmtA.wbdata := cycle //将周期数写入CmtA的wbdata
+    }.otherwise{
+      io.CmtA.wbdata := 0.U
+    }
     ICB.jump := WireInit(0.U.asTypeOf(new JumpIssue()))
     ICB.branch := WireInit(0.U.asTypeOf(new BranchIssue()))
     ICB.load := WireInit(0.U.asTypeOf(new LoadIssue()))
