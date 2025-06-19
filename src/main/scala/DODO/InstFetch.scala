@@ -7,12 +7,12 @@ import chisel3.util._
 class InstFetch extends Module {
   val io = IO(new Bundle {
     // 输出到 Decode 阶段的双指令，这个指令的话是从内存板块里面取出来的
-    val IFIDA = Output(new InstCtrlBlock)
-    val IFIDB = Output(new InstCtrlBlock)
+    val IFIDA = Output(new InstBundle)
+    val IFIDB = Output(new InstBundle)
 
     // 来自 Commit 阶段的反馈（实际跳转/分支结果）
-    val CmtA = Input(new InstCtrlBlock)
-    val CmtB = Input(new InstCtrlBlock)
+    val CmtA = Input(new InstBundle)
+    val CmtB = Input(new InstBundle)
     // 流水线控制信号
     val FetchBlock = Input(Bool())  // 阻塞信号(如 Cache Miss)
     val Rollback = Input(Bool())    // 分支预测失败回滚
@@ -93,16 +93,16 @@ class InstFetch extends Module {
 
 
   when(io.Rollback) {
-    io.IFIDA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.IFIDB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.IFIDA := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.IFIDB := WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise {
     io.IFIDA := GenICB(ValidA, InstA, PCA,Bp.io.pred_index_0, Bp.io.pred_taken_0, Bp.io.pred_target_0,csrA_cycle,csrA_time)
     io.IFIDB := GenICB(ValidB, InstB, PCB, Bp.io.pred_index_1, Bp.io.pred_taken_1, Bp.io.pred_target_1,csrB_cycle,csrB_time)
   }
 
   //实际上只生成了指令控制块生成函数,构造一个空的指令控制块(InstCtrlBlock),仅填充有效位、指令内容和 PC,其余字段由后续流水线阶段赋值。
-  def GenICB(Valid: Bool, inst: UInt, pc: UInt, pred_index:UInt, pred_taken:UInt, pred_target:UInt,csr_cycle:Bool,csr_time:Bool): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenICB(Valid: Bool, inst: UInt, pc: UInt, pred_index:UInt, pred_taken:UInt, pred_target:UInt,csr_cycle:Bool,csr_time:Bool): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := Valid//有效位
     ICB.inst := inst//指令内容
     ICB.pc := pc//PC
@@ -120,11 +120,11 @@ class InstFetch extends Module {
     ICB.src2 := 0.U
     ICB.imm := WireInit(0.U.asTypeOf(new IMM()))
     when(csr_time) {
-      io.CmtA.wbdata := time //将时间戳写入CmtA的wbdata
+      ICB.wbdata := time //将时间戳写入CmtA的wbdata
     }.elsewhen(csr_cycle) {
-      io.CmtA.wbdata := cycle //将周期数写入CmtA的wbdata
+      ICB.wbdata := cycle //将周期数写入CmtA的wbdata
     }.otherwise{
-      io.CmtA.wbdata := 0.U
+      ICB.wbdata := 0.U
     }
     ICB.jump := WireInit(0.U.asTypeOf(new JumpIssue()))
     ICB.branch := WireInit(0.U.asTypeOf(new BranchIssue()))
@@ -142,12 +142,6 @@ class InstFetch extends Module {
 
 
 class RAMHelperIO_2 extends Bundle {
-  //数据读取端口
-  // 读取数据，存储器返回的读取的数据，就是说这些load取出来的数据
-   // 指令地址（字节地址），输出当前需要读取的指令地址（字节地址）
-  // 指令读取使能是memory相关的东西，true的时候需要在指定的地址处返回指令的数据
-  // 数据存入端口信号
-  //其实大概分为六类 读使能 地址 数据   写使能 地址 数据
   val read_address = Output(UInt(64.W)) // 指令地址（字节地址），输出当前需要读取的指令地址（字节地址）
   val data_address   = Output(UInt(64.W)) // 数据地址（字节地址）需要存入或者取出的数据的地址
   val data_wen    = Output(Bool())     // 写使能，数据写的信号，决定是否可以存入的信号，这个由cmtable决定
@@ -155,7 +149,6 @@ class RAMHelperIO_2 extends Bundle {
   val func3_write  = Output(UInt(3.W))  // 字节写掩码
   val func3_read   = Output(UInt(3.W))  // 字节读掩码
   val data_rdata  = Input(UInt(64.W))//读取的使能信号是受dataAddr 和 func3 有效和wen信号控制的
-  // 原子操作标志
 }
 
 // 添加Verilog生成对象

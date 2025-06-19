@@ -3,16 +3,15 @@ import chisel3._
 import chisel3.util._
 
 
-//ljlsyfdygv
 class Execute extends Module{
   val io = IO(new Bundle{
-    val RREXA = Input(new InstCtrlBlock)
-    val RREXB = Input(new InstCtrlBlock)
-    val RREXC = Input(new InstCtrlBlock)
-    val EXMEM = Output(new InstCtrlBlock)
+    val RREXA = Input(new InstBundle)
+    val RREXB = Input(new InstBundle)
+    val RREXC = Input(new InstBundle)
+    val EXMEM = Output(new InstBundle)
 
-    val FinC = Output(new InstCtrlBlock)
-    val FinD = Output(new InstCtrlBlock)
+    val FinC = Output(new InstBundle)
+    val FinD = Output(new InstBundle)
 
     val Rollback = Input(Bool())
   })
@@ -45,17 +44,17 @@ class Execute extends Module{
   agu.io.imm <> INSTC.imm
 
   when(io.Rollback){
-    io.FinC := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.FinD := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.EXMEM := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.FinC := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.FinD := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.EXMEM := WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
     io.FinC := GenFin(INSTA.isa.Aclass, ALU1.io.result, INSTA)
     io.FinD := GenFin(INSTB.isa.Aclass, ALU2.io.result, INSTB)
     io.EXMEM := GenICB(agu.io.load, agu.io.store, INSTC)
   }
 
-  def GenICB(load: LoadIssue, store: StoreIssue, RREX: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenICB(load: LoadIssue, store: StoreIssue, RREX: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := RREX.Valid
     ICB.inst := RREX.inst
     ICB.pc := RREX.pc
@@ -85,8 +84,8 @@ class Execute extends Module{
     ICB
   }
 
-  def GenFin(finish: Bool, wbdata: UInt, RREX: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenFin(finish: Bool, wbdata: UInt, RREX: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := RREX.Valid
     ICB.inst := RREX.inst
     ICB.pc := RREX.pc

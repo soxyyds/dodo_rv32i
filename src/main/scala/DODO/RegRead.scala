@@ -7,24 +7,24 @@ import chisel3.util._
 class RegRead extends Module{
   val io = IO(new Bundle{
     //Dispatch->RegRead
-    val DPRRA = Input(new InstCtrlBlock)
-    val DPRRB = Input(new InstCtrlBlock)
-    val DPRRC = Input(new InstCtrlBlock)
+    val DPRRA = Input(new InstBundle)
+    val DPRRB = Input(new InstBundle)
+    val DPRRC = Input(new InstBundle)
     //Dispatch模块会一次输出三条指令到寄存器读取阶段，故有三个输入和输出
     //其中AB两条是计算类或者分支跳转类，C是寄存器读写
     //RegRead->Execute
-    val RREXA = Output(new InstCtrlBlock)
-    val RREXB = Output(new InstCtrlBlock)
-    val RREXC = Output(new InstCtrlBlock)
+    val RREXA = Output(new InstBundle)
+    val RREXB = Output(new InstBundle)
+    val RREXC = Output(new InstBundle)
 
     //FinA/B代表如果AB两条指令是分支跳转类的话，指令的完成情况
     //FinC/D同理代表AB两条指令是计算类的话，指令的完成情况
     //FinE代表C指令是寄存器读写类的话，指令的完成情况
-    val FinA = Output(new InstCtrlBlock)
-    val FinB = Output(new InstCtrlBlock)
-    val FinC = Input(new InstCtrlBlock)
-    val FinD = Input(new InstCtrlBlock)
-    val FinE = Input(new InstCtrlBlock)
+    val FinA = Output(new InstBundle)
+    val FinB = Output(new InstBundle)
+    val FinC = Input(new InstBundle)
+    val FinD = Input(new InstBundle)
+    val FinE = Input(new InstBundle)
 
     val Rollback = Input(Bool())
 
@@ -86,11 +86,11 @@ class RegRead extends Module{
   io.FinB.csr_wdata  := 0.U
   when(io.Rollback){
     //如果发生回滚，将输出的指令控制块清零
-    io.RREXA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.RREXB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.RREXC := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.FinA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.FinB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.RREXA := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.RREXB := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.RREXC := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.FinA := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.FinB := WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
     //将前一阶段传过来的指令信息继续向下一阶段传递
     io.RREXA := GenICB(src1, src2, INSTA)
@@ -119,8 +119,8 @@ class RegRead extends Module{
       }
     }
   }
-  def GenICB(src1: UInt, src2: UInt, DPRR: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenICB(src1: UInt, src2: UInt, DPRR: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.isa := DPRR.isa
     ICB.Valid := DPRR.Valid
     ICB.inst := DPRR.inst
@@ -149,8 +149,8 @@ class RegRead extends Module{
     ICB.bppredIndex := DPRR.bppredIndex
     ICB    //返回值，将生成的指令信息返回给调用者
   }
-  def GenCSR(finish: Bool, DPRR: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenCSR(finish: Bool, DPRR: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := DPRR.Valid
     ICB.inst := DPRR.inst
     ICB.pc := DPRR.pc
@@ -181,8 +181,8 @@ class RegRead extends Module{
   }
 
   //在分支跳转类指令完成时，生成包含最新分支跳转信息的指令控制块，供Commit阶段使用
-  def GenFin(finish: Bool, jump: JumpIssue, branch: BranchIssue, RREX: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenFin(finish: Bool, jump: JumpIssue, branch: BranchIssue, RREX: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := RREX.Valid
     ICB.inst := RREX.inst
     ICB.pc := RREX.pc

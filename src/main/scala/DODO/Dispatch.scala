@@ -6,15 +6,14 @@ import chisel3.util._
 
 class dispatch extends Module{
   val io = IO(new Bundle {
-    val in_A = Input(new InstCtrlBlock)
-    val in_B = Input(new InstCtrlBlock)
-    val out_A = Output(new InstCtrlBlock)
-    val out_B = Output(new InstCtrlBlock)
-    val out_C = Output(new InstCtrlBlock)
+    val in_A = Input(new InstBundle)
+    val in_B = Input(new InstBundle)
+    val out_A = Output(new InstBundle)
+    val out_B = Output(new InstBundle)
+    val out_C = Output(new InstBundle)
     //此处需要将指令进行分类，于是输出的指令实际上是三条out
     //在这里面需要建立两个发射队列reserve 这个保留站的发送需要根据依赖的寄存器的状态来判断的
     //于是输入的肯定需要寄存器的状态表 还有回滚信号 还有肯定还有根据保留站里面指令的数量的使能信号
-  //  val reserve = Output(Vec(16, new InstCtrlBlock))
     val regstate = Input(UInt(128.W))
     val fetchblock = Output(Bool())
     val rollback = Input(Bool())
@@ -23,24 +22,24 @@ class dispatch extends Module{
   val intquene: intquene = Module (new intquene)
   val memquene: memquene = Module(new memquene)
   //然后需要将指令分配到两个保留站里面
-  def opcode(inst: InstCtrlBlock): UInt = inst.inst(6, 0)
-  def ismem(inst: InstCtrlBlock): Bool = {
+  def opcode(inst: InstBundle): UInt = inst.inst(6, 0)
+  def ismem(inst: InstBundle): Bool = {
     val op = opcode(inst)
     op === "b0000011".U || op === "b0100011".U  // Load或Store指令
   }
-  def isint(inst: InstCtrlBlock): Bool = !ismem(inst)
+  def isint(inst: InstBundle): Bool = !ismem(inst)
   when(isint(io.in_A)){
     intquene.io.intquene_in_A <> io.in_A
-    memquene.io.memquene_in_A <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    memquene.io.memquene_in_A <> WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
-    intquene.io.intquene_in_A <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    intquene.io.intquene_in_A <> WireInit(0.U.asTypeOf(new InstBundle()))
     memquene.io.memquene_in_A <> io.in_A
   }
   when(isint(io.in_B)){
     intquene.io.intquene_in_B <> io.in_B
-    memquene.io.memquene_in_B <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    memquene.io.memquene_in_B <> WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
-    intquene.io.intquene_in_B <> WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    intquene.io.intquene_in_B <> WireInit(0.U.asTypeOf(new InstBundle()))
     memquene.io.memquene_in_B <> io.in_B
   }
   io.out_A := intquene.io.intquene_out_A
@@ -51,23 +50,21 @@ class dispatch extends Module{
   intquene.io.rollback <> io.rollback
   memquene.io.rollback <> io.rollback
   io.fetchblock := (intquene.io.intfull || memquene.io.memfull)
- // io.reserve := intquene.io.reserve
 }
 //首先创建两个保留站
 //1：整形保留站
 class intquene extends Module{
   val io = IO (new Bundle{
-    val intquene_in_A = Input(new InstCtrlBlock)
-    val intquene_in_B = Input(new InstCtrlBlock)
-    val intquene_out_A = Output(new InstCtrlBlock)
-    val intquene_out_B = Output(new InstCtrlBlock)
-  //  val reserve = Output(Vec(64, new InstCtrlBlock))
+    val intquene_in_A = Input(new InstBundle)
+    val intquene_in_B = Input(new InstBundle)
+    val intquene_out_A = Output(new InstBundle)
+    val intquene_out_B = Output(new InstBundle)
     val regstate = Input(UInt(128.W))
     val rollback = Input(Bool())
     val intfull = Output(Bool())
   })
   //在这个保留站里面，我们很需要指向标还有存储站，指令标有两个，一个为入队另一个则为出队,还有堆满的信号
-  val reserve= RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val reserve= RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstBundle())))))
   //首先把16个槽位的空闲状态通过genfreelist用16位01指令表示出来，然后取最低的即为进队的point，并且取2对数
   val freelist_A: UInt = genfreelist_A()
   val freelist_B: UInt = freelist_A - lowbit(freelist_A)
@@ -99,43 +96,38 @@ class intquene extends Module{
   //如果是回滚就清空保留站，并且这个时序就不会输出对应的指令的out是一个空指令
   when(io.rollback){
     for(i <- 0 to 63){
-      reserve(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      reserve(i) := WireInit(0.U.asTypeOf(new InstBundle()))
     }
-    io.intquene_out_A :=  WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.intquene_out_B :=  WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.intquene_out_A :=  WireInit(0.U.asTypeOf(new InstBundle()))
+    io.intquene_out_B :=  WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
     when(lowbit(freelist_A) =/= 0.U){reserve(in_point_A) := io.intquene_in_A}
     when(lowbit(freelist_B) =/= 0.U){reserve(in_point_B) := io.intquene_in_B}
 
     when(lowbit(readylist_A) =/=0.U){
       io.intquene_out_A := reserve (out_point_A)
-      reserve(out_point_A) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    }.otherwise{io.intquene_out_A :=WireInit(0.U.asTypeOf(new InstCtrlBlock())) }
+      reserve(out_point_A) := WireInit(0.U.asTypeOf(new InstBundle()))
+    }.otherwise{io.intquene_out_A :=WireInit(0.U.asTypeOf(new InstBundle())) }
     when(lowbit(readylist_B) =/=0.U){
       io.intquene_out_B := reserve (out_point_B)
-      reserve(out_point_B) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstCtrlBlock()))}
+      reserve(out_point_B) := WireInit(0.U.asTypeOf(new InstBundle()))
+    }.otherwise{io.intquene_out_B :=WireInit(0.U.asTypeOf(new InstBundle()))}
   }
-  //这个是用于阻塞判断的，从而避免满状态的出现
-  //  freelist_A := genfreelist_A()
-  //freelist_B := freelist_A - lowbit(freelist_A)
-  //  in_point_A := Log2(lowbit(freelist_A))
-  // in_point_B := Log2(lowbit(freelist_B))
-  //io.reserve := reserve
+
 }
 //2：访存保留站
 class memquene extends Module{
   val io = IO (new Bundle{
-    val memquene_in_A = Input(new InstCtrlBlock)
-    val memquene_in_B = Input(new InstCtrlBlock)
-    val memquene_out_C =Output(new InstCtrlBlock)
+    val memquene_in_A = Input(new InstBundle)
+    val memquene_in_B = Input(new InstBundle)
+    val memquene_out_C =Output(new InstBundle)
 
     val regstate = Input(UInt(128.W))
     val memfull = Output(Bool())
     val rollback = Input(Bool())
   })
   //访存保留站同样需要有储存器 还有入队还有进队的指针,但是这个指针略有不同因为最后采用的是环形逻辑
-  val reserve: Vec[InstCtrlBlock] = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val reserve: Vec[InstBundle] = RegInit(VecInit(Seq.fill(16)(WireInit(0.U.asTypeOf(new InstBundle())))))
   val in_point: UInt = RegInit(0.U(4.W))
   val out_point: UInt= RegInit(0.U(4.W))
   io.memfull := ((in_point + 1.U ) === out_point || (in_point + 2.U ) === out_point)
@@ -144,9 +136,9 @@ class memquene extends Module{
     in_point := 0.U
     out_point := 0.U
     for(i <- 0 to 15) {
-      reserve(i) := 0.U.asTypeOf(new InstCtrlBlock())  // 清除所有条目
+      reserve(i) := 0.U.asTypeOf(new InstBundle())  // 清除所有条目
     }
-    io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.memquene_out_C := WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
     when(io.memquene_in_A.Valid && io.memquene_in_B.Valid) {
       reserve(in_point) := io.memquene_in_A
@@ -161,10 +153,10 @@ class memquene extends Module{
     }
     when(!io.rollback && (reserve(out_point).Valid && io.regstate(reserve(out_point).pregsrc1)&&io.regstate(reserve(out_point).pregsrc2))){
       io.memquene_out_C := reserve(out_point)
-      reserve(out_point) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      reserve(out_point) := WireInit(0.U.asTypeOf(new InstBundle()))
       out_point := out_point + 1.U
     }.otherwise{
-      io.memquene_out_C := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      io.memquene_out_C := WireInit(0.U.asTypeOf(new InstBundle()))
     }
   }
   //这里out_point指针指向的是要出站的指令位置，但是要出去必须就绪才可以出去，于是要看它的物理寄存器是否就绪

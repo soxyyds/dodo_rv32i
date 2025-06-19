@@ -4,7 +4,7 @@ import chisel3._
 import chisel3.util._
 
 class BranchPredictorIO extends Bundle {
-  // 输入：从EX阶段传来的实际跳转结果
+  // 输入：从commit阶段传来的实际跳转结果
   val ex_is_branch = Input(Bool())
   val ex_is_taken = Input(Bool())
   val ex_mis_pred = Input(Bool())

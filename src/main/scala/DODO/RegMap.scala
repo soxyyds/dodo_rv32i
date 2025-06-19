@@ -6,22 +6,22 @@ import chisel3.util._
 
 class RegMap extends Module{
   val io = IO(new Bundle{
-    val IDRMA = Input(new InstCtrlBlock)
-    val IDRMB = Input(new InstCtrlBlock)
-    val RMDPA = Output(new InstCtrlBlock)
-    val RMDPB = Output(new InstCtrlBlock)
+    val IDRMA = Input(new InstBundle)
+    val IDRMB = Input(new InstBundle)
+    val RMDPA = Output(new InstBundle)
+    val RMDPB = Output(new InstBundle)
 
     val FetchBlock = Input(Bool())
     val Rollback = Input(Bool())
 
-    val CmtA = Input(new InstCtrlBlock)
-    val CmtB = Input(new InstCtrlBlock)
+    val CmtA = Input(new InstBundle)
+    val CmtB = Input(new InstBundle)
 
-    val FinA = Input(new InstCtrlBlock)
-    val FinB = Input(new InstCtrlBlock)
-    val FinC = Input(new InstCtrlBlock)
-    val FinD = Input(new InstCtrlBlock)
-    val FinE = Input(new InstCtrlBlock)
+    val FinA = Input(new InstBundle)
+    val FinB = Input(new InstBundle)
+    val FinC = Input(new InstBundle)
+    val FinD = Input(new InstBundle)
+    val FinE = Input(new InstBundle)
 
     val ReOrderNumA = Input(UInt(6.W))
     val ReOrderNumB = Input(UInt(6.W))
@@ -32,8 +32,8 @@ class RegMap extends Module{
 
   val RegA = RegEnable(io.IDRMA, !io.FetchBlock)
   val RegB = RegEnable(io.IDRMB, !io.FetchBlock)
-  val INSTA = Mux(!io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  val INSTB = Mux(!io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val INSTA = Mux(!io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstBundle())))
+  val INSTB = Mux(!io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstBundle())))
 
   val MapTable = new InitIncreaseRegBank(32, 7)
   // 稳定的映射关系，分支预测失误或中断处理时，可以一拍回滚
@@ -88,10 +88,10 @@ class RegMap extends Module{
     // 所以要提供两个特殊的物理寄存器号，第一个free，第二个assign
     phyRegStatesTable.Rollback(io.CmtA.cmtdes, io.CmtA.pregdes)
 
-    io.RMDPA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    io.RMDPB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    RegA := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
-    RegB := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+    io.RMDPA := WireInit(0.U.asTypeOf(new InstBundle()))
+    io.RMDPB := WireInit(0.U.asTypeOf(new InstBundle()))
+    RegA := WireInit(0.U.asTypeOf(new InstBundle()))
+    RegB := WireInit(0.U.asTypeOf(new InstBundle()))
   }.otherwise{
     // 写入最新的映射关系
     when(INSTA.regdes =/= INSTB.regdes) {
@@ -113,8 +113,8 @@ class RegMap extends Module{
     io.RMDPB := GenICB(pregsrc3, pregsrc4, pregdesB, cmtdesB, io.ReOrderNumB, INSTB)
   }
 
-  def GenICB(pregsrc1: UInt, pregsrc2: UInt, pregdes: UInt, cmtdes: UInt, reOrderNum: UInt, IDRM: InstCtrlBlock): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+  def GenICB(pregsrc1: UInt, pregsrc2: UInt, pregdes: UInt, cmtdes: UInt, reOrderNum: UInt, IDRM: InstBundle): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB.Valid := IDRM.Valid
     ICB.inst := IDRM.inst
     ICB.pc := IDRM.pc

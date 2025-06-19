@@ -5,20 +5,19 @@ import chisel3.util._
 
 class Commit extends Module {
   val io = IO(new Bundle {
-    val EnA = Input(new InstCtrlBlock)
-    val EnB = Input(new InstCtrlBlock)
-    val CmtA = Output(new InstCtrlBlock)
-    val CmtB = Output(new InstCtrlBlock)
+    val EnA = Input(new InstBundle)
+    val EnB = Input(new InstBundle)
+    val CmtA = Output(new InstBundle)
+    val CmtB = Output(new InstBundle)
 
-    val FinA = Input(new InstCtrlBlock)
-    val FinB = Input(new InstCtrlBlock)
-    val FinC = Input(new InstCtrlBlock)
-    val FinD = Input(new InstCtrlBlock)
-    val FinE = Input(new InstCtrlBlock)
+    val FinA = Input(new InstBundle)
+    val FinB = Input(new InstBundle)
+    val FinC = Input(new InstBundle)
+    val FinD = Input(new InstBundle)
+    val FinE = Input(new InstBundle)
 
     val ReOrderNumA = Output(UInt(6.W))
     val ReOrderNumB = Output(UInt(6.W))
-   // val Bank = Output(Vec(64, new InstCtrlBlock()))
 
     val ForwardLoad = Input(new LoadIssue)
     val ForwardStore = Output(new StoreIssue)
@@ -35,7 +34,7 @@ class Commit extends Module {
   io.ReOrderNumA := EnQueuePointer
   io.ReOrderNumB := EnQueuePointer + 1.U
 
-  val Bank = RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstCtrlBlock())))))
+  val Bank = RegInit(VecInit(Seq.fill(64)(WireInit(0.U.asTypeOf(new InstBundle())))))
   val cycle =RegInit(0.U(32.W)) // 用于调试，记录周期数
   val time = RegInit(0.U(32.W)) // 用于调试，记录时间
   time := time + 1.U
@@ -58,8 +57,8 @@ class Commit extends Module {
   val CmtBisStore = CmtB.isa.Sclass.asBool
 
   val Bready = (Aready && CmtB.Valid && CmtB.finish && !CmtBranchJump && !io.Rollback && !CmtBisPrint && !CmtBisHalt && !CmtBisStore ).asBool
-  io.CmtA := Mux(Aready, CmtA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  io.CmtB := Mux(Bready, CmtB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  io.CmtA := Mux(Aready, CmtA, WireInit(0.U.asTypeOf(new InstBundle())))
+  io.CmtB := Mux(Bready, CmtB, WireInit(0.U.asTypeOf(new InstBundle())))
   when (Aready || Bready) {
     cycle := cycle + Aready + Bready // 每次提交指令时增加周期计数
   }
@@ -68,7 +67,7 @@ class Commit extends Module {
 
   when(io.Rollback) {
     for (i <- 0 to 63) {
-      Bank(i) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      Bank(i) := WireInit(0.U.asTypeOf(new InstBundle()))
     }
     EnQueuePointer := 0.U
     DeQueuePointer := 0.U
@@ -83,7 +82,7 @@ class Commit extends Module {
     EnQueuePointer := EnQueuePointer + Aenter.asUInt + Benter.asUInt
     DeQueuePointer := DeQueuePointer + Aready.asUInt + Bready.asUInt
     when(Aready) {
-      Bank(DeQueuePointer) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      Bank(DeQueuePointer) := WireInit(0.U.asTypeOf(new InstBundle()))
       when(io.CmtA.isa.RDTIME){
         io.CmtA.wbdata := time //将时间戳写入CmtA的wbdata
       }.elsewhen(io.CmtA.isa.RDCYCLE){
@@ -91,7 +90,7 @@ class Commit extends Module {
       }
     }
     when(Bready) {
-      Bank(DeQueuePointer + 1.U) := WireInit(0.U.asTypeOf(new InstCtrlBlock()))
+      Bank(DeQueuePointer + 1.U) := WireInit(0.U.asTypeOf(new InstBundle()))
       when(io.CmtB.isa.RDTIME){
         io.CmtB.wbdata := time //将时间戳写入CmtB的wbdata
       }.elsewhen(io.CmtB.isa.RDCYCLE){
@@ -123,7 +122,6 @@ class Commit extends Module {
   // 传递CSR写数据
   io.EnQueuePointer := EnQueuePointer
   io.DeQueuePointer := DeQueuePointer
- // io.Bank := Bank
 }
 
 object CyclicShiftLeft {
@@ -137,6 +135,4 @@ object CyclicShiftRight {
     ((vec << (64.U - n))(63, 0) | (vec >> n)(63, 0))
   }
 }
-
-// 添加Verilog生成对象
 

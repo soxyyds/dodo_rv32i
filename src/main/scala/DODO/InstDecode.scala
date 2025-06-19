@@ -5,18 +5,18 @@ import chisel3.util._
 
 class InstDecode extends Module {
   val io = IO(new Bundle{
-    val IFIDA = Input(new InstCtrlBlock)  // 指令A输入
-    val IFIDB = Input(new InstCtrlBlock)  // 指令B输入
-    val IDRMA = Output(new InstCtrlBlock) // 解码后指令A输出
-    val IDRMB = Output(new InstCtrlBlock) // 解码后指令B输出
+    val IFIDA = Input(new InstBundle)  // 指令A输入
+    val IFIDB = Input(new InstBundle)  // 指令B输入
+    val IDRMA = Output(new InstBundle) // 解码后指令A输出
+    val IDRMB = Output(new InstBundle) // 解码后指令B输出
 
     val FetchBlock = Input(Bool())       // 取指阻塞信号
     val Rollback = Input(Bool())         // 流水线回滚信号
   })
 
   // 流水线寄存器
-  val RegA = Reg(new InstCtrlBlock)
-  val RegB = Reg(new InstCtrlBlock)
+  val RegA = Reg(new InstBundle)
+  val RegB = Reg(new InstBundle)
 
   when(!io.FetchBlock) {
     RegA := io.IFIDA
@@ -24,8 +24,8 @@ class InstDecode extends Module {
   }
 
   // 指令选择逻辑
-  val INSTA = Mux(!io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
-  val INSTB = Mux(!io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstCtrlBlock())))
+  val INSTA = Mux(!io.FetchBlock, RegA, WireInit(0.U.asTypeOf(new InstBundle())))
+  val INSTB = Mux(!io.FetchBlock, RegB, WireInit(0.U.asTypeOf(new InstBundle())))
 
   // 解码器实例
   val decodeA = Module(new Decoder)
@@ -35,10 +35,10 @@ class InstDecode extends Module {
 
   // 流水线控制
   when(io.Rollback) {
-    RegA := 0.U.asTypeOf(new InstCtrlBlock)
-    RegB := 0.U.asTypeOf(new InstCtrlBlock)
-    io.IDRMA := 0.U.asTypeOf(new InstCtrlBlock)
-    io.IDRMB := 0.U.asTypeOf(new InstCtrlBlock)
+    RegA := 0.U.asTypeOf(new InstBundle)
+    RegB := 0.U.asTypeOf(new InstBundle)
+    io.IDRMA := 0.U.asTypeOf(new InstBundle)
+    io.IDRMB := 0.U.asTypeOf(new InstBundle)
   }.otherwise {
     io.IDRMA := GenICB(
       decodeA.io.isa, decodeA.io.imm,
@@ -60,9 +60,9 @@ class InstDecode extends Module {
               regsrc1: UInt,
               regsrc2: UInt,
               csr_addr: UInt,
-              IFID: InstCtrlBlock
-            ): InstCtrlBlock = {
-    val ICB = Wire(new InstCtrlBlock)
+              IFID: InstBundle
+            ): InstBundle = {
+    val ICB = Wire(new InstBundle)
     ICB := IFID  // 保留原始信号（如 PC、inst 等）
 
     // 更新解码后的字段

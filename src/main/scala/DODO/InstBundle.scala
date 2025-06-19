@@ -3,7 +3,7 @@ package DODO
 import chisel3._
 
 
-class InstCtrlBlock extends Bundle{
+class InstBundle extends Bundle{
   //base
   val Valid :Bool = Bool()
   val inst: UInt = UInt(32.W)
@@ -151,10 +151,5 @@ class ISA extends Bundle{
   def Lclass(): Bool = {
     val Load = LW || LH || LB || LHU || LBU
     Load
-  }
-}
-object InstCtrlBlock {
-  def =/=(a: InstCtrlBlock, b: InstCtrlBlock): Bool = {
-    a.asUInt =/= b.asUInt  // 整体比较
   }
 }
